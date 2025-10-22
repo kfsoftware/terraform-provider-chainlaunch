@@ -1,0 +1,396 @@
+# ==============================================================================
+# PROVIDER CONFIGURATION
+# ==============================================================================
+# Rename this file to terraform.tfvars and update the values
+
+chainlaunch_url      = "http://localhost:8100"
+chainlaunch_username = "admin"
+chainlaunch_password = "admin123"
+
+# ==============================================================================
+# CHANNEL CONFIGURATION
+# ==============================================================================
+
+channel_name        = "mychannel"
+channel_description = "A complete Fabric network with multiple organizations"
+
+# ==============================================================================
+# PEER ORGANIZATIONS
+# ==============================================================================
+# Example 1: Two organizations with multiple peers each
+
+peer_organizations = {
+  org1 = {
+    msp_id      = "Org1MSP"
+    description = "First peer organization"
+    peers = {
+      peer0 = {
+        name                      = "peer0-org1"
+        mode                      = "service"
+        version                   = "3.1.2"
+        external_endpoint         = "localhost:7051"
+        listen_address            = "0.0.0.0:7051"
+        chaincode_address         = "0.0.0.0:7052"
+        events_address            = "0.0.0.0:7053"
+        operations_listen_address = "0.0.0.0:9443"
+        domain_names              = ["peer0-org1", "localhost"]
+      }
+      peer1 = {
+        name                      = "peer1-org1"
+        mode                      = "service"
+        version                   = "3.1.2"
+        external_endpoint         = "localhost:7151"
+        listen_address            = "0.0.0.0:7151"
+        chaincode_address         = "0.0.0.0:7152"
+        events_address            = "0.0.0.0:7153"
+        operations_listen_address = "0.0.0.0:9543"
+        domain_names              = ["peer1-org1", "localhost"]
+      }
+    }
+    # First peer (peer0) will be the anchor peer
+    anchor_peer_indices = [0]
+  }
+
+  org2 = {
+    msp_id      = "Org2MSP"
+    description = "Second peer organization"
+    peers = {
+      peer0 = {
+        name                      = "peer0-org2"
+        mode                      = "service"
+        version                   = "3.1.2"
+        external_endpoint         = "localhost:8051"
+        listen_address            = "0.0.0.0:8051"
+        chaincode_address         = "0.0.0.0:8052"
+        events_address            = "0.0.0.0:8053"
+        operations_listen_address = "0.0.0.0:10443"
+        domain_names              = ["peer0-org2", "localhost"]
+      }
+      peer1 = {
+        name                      = "peer1-org2"
+        mode                      = "service"
+        version                   = "3.1.2"
+        external_endpoint         = "localhost:8151"
+        listen_address            = "0.0.0.0:8151"
+        chaincode_address         = "0.0.0.0:8152"
+        events_address            = "0.0.0.0:8153"
+        operations_listen_address = "0.0.0.0:10543"
+        domain_names              = ["peer1-org2", "localhost"]
+      }
+    }
+    # First peer (peer0) will be the anchor peer
+    anchor_peer_indices = [0]
+  }
+}
+
+# ==============================================================================
+# Example 2: Three organizations (uncomment to use)
+# ==============================================================================
+
+# peer_organizations = {
+#   org1 = {
+#     msp_id      = "Org1MSP"
+#     description = "First peer organization"
+#     peers = {
+#       peer0 = {
+#         name                      = "peer0-org1"
+#         mode                      = "service"
+#         version                   = "3.1.2"
+#         external_endpoint         = "localhost:7051"
+#         listen_address            = "0.0.0.0:7051"
+#         chaincode_address         = "0.0.0.0:7052"
+#         events_address            = "0.0.0.0:7053"
+#         operations_listen_address = "0.0.0.0:9443"
+#       }
+#     }
+#     anchor_peer_indices = [0]
+#   }
+#
+#   org2 = {
+#     msp_id      = "Org2MSP"
+#     description = "Second peer organization"
+#     peers = {
+#       peer0 = {
+#         name                      = "peer0-org2"
+#         mode                      = "service"
+#         version                   = "3.1.2"
+#         external_endpoint         = "localhost:8051"
+#         listen_address            = "0.0.0.0:8051"
+#         chaincode_address         = "0.0.0.0:8052"
+#         events_address            = "0.0.0.0:8053"
+#         operations_listen_address = "0.0.0.0:10443"
+#       }
+#     }
+#     anchor_peer_indices = [0]
+#   }
+#
+#   org3 = {
+#     msp_id      = "Org3MSP"
+#     description = "Third peer organization"
+#     peers = {
+#       peer0 = {
+#         name                      = "peer0-org3"
+#         mode                      = "service"
+#         version                   = "3.1.2"
+#         external_endpoint         = "localhost:9051"
+#         listen_address            = "0.0.0.0:9051"
+#         chaincode_address         = "0.0.0.0:9052"
+#         events_address            = "0.0.0.0:9053"
+#         operations_listen_address = "0.0.0.0:11443"
+#       }
+#     }
+#     anchor_peer_indices = [0]
+#   }
+# }
+
+# ==============================================================================
+# ORDERER ORGANIZATIONS
+# ==============================================================================
+# Example 1: Single orderer org with 3 orderers (recommended for production)
+
+orderer_organizations = {
+  orderer_org = {
+    msp_id      = "OrdererOrgMSP"
+    description = "Orderer organization with 3 consenters for Raft consensus"
+    orderers = {
+      orderer0 = {
+        name                      = "orderer0-ordererorg"
+        mode                      = "service"
+        version                   = "3.1.1"
+        external_endpoint         = "localhost:17050"
+        listen_address            = "0.0.0.0:17050"
+        admin_address             = "0.0.0.0:17053"
+        operations_listen_address = "0.0.0.0:17443"
+        domain_names              = ["orderer0-ordererorg", "localhost"]
+      }
+      orderer1 = {
+        name                      = "orderer1-ordererorg"
+        mode                      = "service"
+        version                   = "3.1.1"
+        external_endpoint         = "localhost:17150"
+        listen_address            = "0.0.0.0:17150"
+        admin_address             = "0.0.0.0:17153"
+        operations_listen_address = "0.0.0.0:17543"
+        domain_names              = ["orderer1-ordererorg", "localhost"]
+      }
+      orderer2 = {
+        name                      = "orderer2-ordererorg"
+        mode                      = "service"
+        version                   = "3.1.1"
+        external_endpoint         = "localhost:17250"
+        listen_address            = "0.0.0.0:17250"
+        admin_address             = "0.0.0.0:17253"
+        operations_listen_address = "0.0.0.0:17643"
+        domain_names              = ["orderer2-ordererorg", "localhost"]
+      }
+    }
+  }
+}
+
+# ==============================================================================
+# Example 2: Multiple orderer orgs with 2 orderers each (uncomment to use)
+# ==============================================================================
+
+# orderer_organizations = {
+#   orderer_org1 = {
+#     msp_id      = "OrdererOrg1MSP"
+#     description = "First orderer organization"
+#     orderers = {
+#       orderer0 = {
+#         name                      = "orderer0-ordererorg1"
+#         mode                      = "service"
+#         version                   = "3.1.1"
+#         external_endpoint         = "localhost:17050"
+#         listen_address            = "0.0.0.0:17050"
+#         admin_address             = "0.0.0.0:17053"
+#         operations_listen_address = "0.0.0.0:17443"
+#       }
+#       orderer1 = {
+#         name                      = "orderer1-ordererorg1"
+#         mode                      = "service"
+#         version                   = "3.1.1"
+#         external_endpoint         = "localhost:17150"
+#         listen_address            = "0.0.0.0:17150"
+#         admin_address             = "0.0.0.0:17153"
+#         operations_listen_address = "0.0.0.0:17543"
+#       }
+#     }
+#   }
+#
+#   orderer_org2 = {
+#     msp_id      = "OrdererOrg2MSP"
+#     description = "Second orderer organization"
+#     orderers = {
+#       orderer0 = {
+#         name                      = "orderer0-ordererorg2"
+#         mode                      = "service"
+#         version                   = "3.1.1"
+#         external_endpoint         = "localhost:18050"
+#         listen_address            = "0.0.0.0:18050"
+#         admin_address             = "0.0.0.0:18053"
+#         operations_listen_address = "0.0.0.0:18443"
+#       }
+#       orderer1 = {
+#         name                      = "orderer1-ordererorg2"
+#         mode                      = "service"
+#         version                   = "3.1.1"
+#         external_endpoint         = "localhost:18150"
+#         listen_address            = "0.0.0.0:18150"
+#         admin_address             = "0.0.0.0:18153"
+#         operations_listen_address = "0.0.0.0:18543"
+#       }
+#     }
+#   }
+# }
+
+# ==============================================================================
+# CONSENSUS CONFIGURATION
+# ==============================================================================
+
+consensus_type = "etcdraft"
+
+etcdraft_options = {
+  tick_interval          = "500ms"
+  election_tick          = 10
+  heartbeat_tick         = 1
+  max_inflight_blocks    = 5
+  snapshot_interval_size = 20971520 # 20MB
+}
+
+# ==============================================================================
+# FABRIC CAPABILITIES
+# ==============================================================================
+
+channel_capabilities     = ["V2_0"]
+application_capabilities = ["V2_0"]
+orderer_capabilities     = ["V2_0"]
+
+# ==============================================================================
+# BATCH CONFIGURATION
+# ==============================================================================
+
+batch_size = {
+  max_message_count   = 500
+  absolute_max_bytes  = 103809024 # 99MB
+  preferred_max_bytes = 524288    # 512KB
+}
+
+batch_timeout = "2s"
+
+# ==============================================================================
+# POLICIES
+# ==============================================================================
+
+configure_policies = false
+
+# ==============================================================================
+# CHAINCODE DEPLOYMENT (OPTIONAL)
+# ==============================================================================
+
+# Set to true to deploy chaincode after network creation
+deploy_chaincode = false
+
+# Example 1: Single chaincode deployment
+chaincodes = {
+  basic = {
+    name               = "basic"
+    version            = "1.0"
+    sequence           = 1
+    docker_image       = "hyperledger/fabric-samples-basic:latest"
+    chaincode_address  = "basic.example.com:7052"
+    endorsement_policy = ""  # Empty uses default policy
+    install_on_orgs    = ["org1", "org2"]  # Install on all peers in these orgs
+    approve_with_orgs  = ["org1", "org2"]  # Both orgs must approve
+    commit_with_org    = "org1"            # Org1 commits to channel
+    environment_variables = {
+      CORE_CHAINCODE_LOGGING_LEVEL = "info"
+      CORE_CHAINCODE_LOGGING_SHIM  = "warning"
+    }
+  }
+}
+
+# ==============================================================================
+# Example 2: Multiple chaincodes (uncomment to use)
+# ==============================================================================
+
+# deploy_chaincode = true
+#
+# chaincodes = {
+#   basic = {
+#     name               = "basic"
+#     version            = "1.0"
+#     sequence           = 1
+#     docker_image       = "hyperledger/fabric-samples-basic:latest"
+#     chaincode_address  = "basic.example.com:7052"
+#     endorsement_policy = ""
+#     install_on_orgs    = ["org1", "org2"]
+#     approve_with_orgs  = ["org1", "org2"]
+#     commit_with_org    = "org1"
+#     environment_variables = {
+#       CORE_CHAINCODE_LOGGING_LEVEL = "info"
+#     }
+#   }
+#
+#   asset_transfer = {
+#     name               = "asset-transfer"
+#     version            = "1.0"
+#     sequence           = 1
+#     docker_image       = "hyperledger/fabric-samples-asset-transfer:latest"
+#     chaincode_address  = "asset-transfer.example.com:7052"
+#     endorsement_policy = "OR('Org1MSP.peer','Org2MSP.peer')"  # Custom policy
+#     install_on_orgs    = ["org1", "org2"]
+#     approve_with_orgs  = ["org1", "org2"]
+#     commit_with_org    = "org2"
+#     environment_variables = {
+#       CORE_CHAINCODE_LOGGING_LEVEL = "debug"
+#       CORE_CHAINCODE_EXECUTETIMEOUT = "300s"
+#     }
+#   }
+# }
+
+# ==============================================================================
+# Example 3: Chaincode upgrade (uncomment to use)
+# ==============================================================================
+
+# deploy_chaincode = true
+#
+# chaincodes = {
+#   basic = {
+#     name               = "basic"
+#     version            = "2.0"           # New version
+#     sequence           = 2               # Incremented sequence
+#     docker_image       = "hyperledger/fabric-samples-basic:v2.0"
+#     chaincode_address  = "basic.example.com:7052"
+#     endorsement_policy = ""
+#     install_on_orgs    = ["org1", "org2"]
+#     approve_with_orgs  = ["org1", "org2"]
+#     commit_with_org    = "org1"
+#     environment_variables = {
+#       CORE_CHAINCODE_LOGGING_LEVEL = "info"
+#     }
+#   }
+# }
+
+# ==============================================================================
+# Example 4: Install on specific organizations only
+# ==============================================================================
+
+# deploy_chaincode = true
+#
+# chaincodes = {
+#   private_data = {
+#     name               = "private-data"
+#     version            = "1.0"
+#     sequence           = 1
+#     docker_image       = "myregistry/private-chaincode:latest"
+#     chaincode_address  = "private.example.com:7052"
+#     endorsement_policy = "AND('Org1MSP.peer','Org2MSP.peer')"  # Both must endorse
+#     install_on_orgs    = ["org1", "org2"]  # Install only on org1 and org2
+#     approve_with_orgs  = ["org1", "org2"]
+#     commit_with_org    = "org1"
+#     environment_variables = {
+#       CORE_CHAINCODE_LOGGING_LEVEL = "debug"
+#       PRIVATE_DATA_CONFIG          = "enabled"
+#     }
+#   }
+# }

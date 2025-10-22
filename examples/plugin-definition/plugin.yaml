@@ -1,0 +1,118 @@
+apiVersion: dev.chainlaunch/v1
+kind: Plugin
+metadata:
+    name: hlf-plugin-api
+    version: '1.0'
+    description: 'Hyperledger Fabric API plugin that provides a REST API interface to interact with Fabric networks'
+    author: 'ChainLaunch Team'
+    tags:
+        - fabric
+        - api
+        - rest
+        - chaincode
+    repository: 'https://github.com/kfsoftware/plugin-hlf-api'
+    license: 'Apache-2.0'
+
+spec:
+    dockerCompose:
+        contents: |
+            version: '2.2'
+            services:
+              app:
+                image: ghcr.io/kfsoftware/plugin-hlf-api:5ef1ea1
+                command:
+                  - serve
+                  - --mspid={{ .parameters.key.MspID }}
+                  - --cert={{ .parameters.key.CertPath }}
+                  - --key={{ .parameters.key.KeyPath }}
+                  - --peers={{- range $i, $peer := .parameters.peers }}{{if $i}},{{end}}{{$peer.ExternalEndpoint}}{{- end }}
+                  - --channel={{ .parameters.channelName }}
+                  - --port={{ .parameters.port }}
+                  - --tlscerts={{- range $i, $peer := .parameters.peers }}{{if $i}},{{end}}{{$peer.TLSCACertPath}}{{- end }}
+                ports:
+                  - "{{ .parameters.port }}:{{ .parameters.port }}"
+                volumes:
+                  {{- range .volumeMounts }}
+                  - {{ .Source }}:{{ .Target }}:{{ if .ReadOnly }}ro{{ else }}rw{{ end }}
+                  {{- end }}
+
+    parameters:
+        $schema: http://json-schema.org/draft-07/schema#
+        type: object
+        properties:
+            key:
+                type: object
+                title: Key
+                description: The key to use for the API
+                x-source: fabric-key
+            channelName:
+                type: string
+                title: Channel Name
+                description: The channel name to use for the API
+            peers:
+                type: array
+                title: Peers
+                description: The peers to use for the API
+                x-source: fabric-peer
+            port:
+                type: number
+                title: Port
+                description: The port to use for the API
+        required: []
+
+    metrics:
+        endpoints:
+            - service: app
+              port: '{{ .parameters.port }}'
+              path: /metrics
+              interval: 15s
+              jobName: hlf-api-metrics
+
+    documentation:
+        readme: |
+            # Hyperledger Fabric API Plugin
+
+            This plugin provides a REST API interface to interact with Hyperledger Fabric networks, allowing you to query and invoke chaincode operations through HTTP endpoints.
+
+            ## Features
+            - REST API interface for Fabric operations
+            - Support for multiple peers
+            - TLS certificate management
+            - Chaincode query and invoke operations
+            - Channel management
+            - Comprehensive metrics and monitoring
+
+            ## Prerequisites
+            - A running Hyperledger Fabric network
+            - Valid MSP certificates and keys
+            - Access to peer nodes
+            - Chaincode installed and instantiated
+
+            ## Configuration
+            The plugin requires the following parameters:
+            - `key`: Fabric key with MSP ID, certificate, and private key
+            - `channelName`: Name of the Fabric channel
+            - `peers`: List of peer nodes to connect to
+            - `port`: Port for the API server
+
+            ## API Endpoints
+            The plugin exposes the following endpoints:
+            - `GET /api/v1/query`: Query chaincode
+            - `POST /api/v1/invoke`: Invoke chaincode
+            - `GET /api/v1/channel`: Get channel information
+            - `GET /api/v1/health`: Health check endpoint
+            - `GET /metrics`: Prometheus metrics endpoint
+
+        examples:
+            - name: 'Basic Configuration'
+              description: 'Configure the API to work with a Fabric network'
+              parameters:
+                  key:
+                      MspID: 'Org1MSP'
+                      CertPath: '/crypto/peer/cert.pem'
+                      KeyPath: '/crypto/peer/key.pem'
+                  channelName: 'mychannel'
+                  peers:
+                      - ExternalEndpoint: 'peer0.org1.example.com:7051'
+                        TLSCACertPath: '/crypto/peer/tls/cert.pem'
+                  port: 8080

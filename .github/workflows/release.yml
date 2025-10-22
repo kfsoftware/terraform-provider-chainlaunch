@@ -1,0 +1,177 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+          - os: windows
+            arch: amd64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build Provider
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          BINARY_NAME="terraform-provider-chainlaunch_v${VERSION}"
+
+          # Build
+          go build -ldflags="-s -w -X main.version=${VERSION}" -o "${BINARY_NAME}"
+
+          # Create archive
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            zip "terraform-provider-chainlaunch_${VERSION}_${{ matrix.os }}_${{ matrix.arch }}.zip" "${BINARY_NAME}" LICENSE README.md
+          else
+            tar czf "terraform-provider-chainlaunch_${VERSION}_${{ matrix.os }}_${{ matrix.arch }}.tar.gz" "${BINARY_NAME}" LICENSE README.md
+          fi
+
+      - name: Generate Checksums
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            sha256sum "terraform-provider-chainlaunch_${VERSION}_${{ matrix.os }}_${{ matrix.arch }}.zip" >> "terraform-provider-chainlaunch_${VERSION}_SHA256SUMS"
+          else
+            sha256sum "terraform-provider-chainlaunch_${VERSION}_${{ matrix.os }}_${{ matrix.arch }}.tar.gz" >> "terraform-provider-chainlaunch_${VERSION}_SHA256SUMS"
+          fi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-provider-chainlaunch_${{ matrix.os }}_${{ matrix.arch }}
+          path: |
+            terraform-provider-chainlaunch_*_${{ matrix.os }}_${{ matrix.arch }}.*
+            terraform-provider-chainlaunch_*_SHA256SUMS
+          retention-days: 90
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Combine checksums
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          cat artifacts/*/terraform-provider-chainlaunch_${VERSION}_SHA256SUMS > terraform-provider-chainlaunch_${VERSION}_SHA256SUMS
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          echo "## Chainlaunch Terraform Provider v${VERSION}" > release_notes.md
+          echo "" >> release_notes.md
+          echo "### Installation" >> release_notes.md
+          echo "" >> release_notes.md
+          echo '```hcl' >> release_notes.md
+          echo 'terraform {' >> release_notes.md
+          echo '  required_providers {' >> release_notes.md
+          echo '    chainlaunch = {' >> release_notes.md
+          echo '      source  = "yourusername/chainlaunch"' >> release_notes.md
+          echo "      version = \"~> ${VERSION}\"" >> release_notes.md
+          echo '    }' >> release_notes.md
+          echo '  }' >> release_notes.md
+          echo '}' >> release_notes.md
+          echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+
+          # Extract changelog for this version if available
+          if [ -f CHANGELOG.md ]; then
+            echo "### Changes" >> release_notes.md
+            echo "" >> release_notes.md
+            # Try to extract changes for this version
+            awk "/## \[${VERSION}\]/,/## \[/" CHANGELOG.md | grep -v "^## \[" | head -n -1 >> release_notes.md || echo "See CHANGELOG.md for details" >> release_notes.md
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz
+            terraform-provider-chainlaunch_*_SHA256SUMS
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-docs:
+    name: Update Documentation
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Install tfplugindocs
+        run: go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest
+
+      - name: Generate Documentation
+        run: |
+          tfplugindocs generate --rendered-provider-name "Chainlaunch" --rendered-website-dir docs
+
+      - name: Commit Documentation
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docs/
+          if git diff --staged --quiet; then
+            echo "No documentation changes"
+          else
+            git commit -m "docs: Update documentation for ${{ github.ref_name }}"
+            git push origin HEAD:main
+          fi

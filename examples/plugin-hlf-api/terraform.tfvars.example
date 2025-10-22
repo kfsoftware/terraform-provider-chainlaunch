@@ -1,0 +1,25 @@
+# Chainlaunch Connection
+chainlaunch_url      = "http://localhost:8100"
+chainlaunch_username = "admin"
+chainlaunch_password = "admin123"
+
+# Organization Configuration
+organization_msp_id = "Org1MSP"
+
+# Peer Configuration
+# REQUIRED: Specify peer names (slugs)
+# Get peer names from: curl -s -u admin:admin123 http://localhost:8100/api/v1/nodes | jq '.[] | select(.type == "PEER") | .name'
+peer0_name = "peer0.org1.example.com"  # Replace with your peer name
+
+# Optional: Add a second peer for redundancy
+# peer1_name = "peer1.org1.example.com"
+
+# Identity Configuration
+# A new admin identity will be created automatically
+identity_name = "hlf-api-admin"
+
+# Channel Configuration
+channel_name = "mychannel"
+
+# API Configuration
+api_port = 8080

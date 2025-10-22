@@ -1,0 +1,242 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # Linting and formatting checks
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Go Format Check
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "Go files are not formatted. Run 'make fmt' to fix."
+            gofmt -l .
+            exit 1
+          fi
+
+      - name: Go Vet
+        run: go vet ./...
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+          terraform_wrapper: false
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Run golangci-lint
+        run: golangci-lint run --timeout=5m
+
+  # Build the provider binary
+  build:
+    name: Build Provider
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [linux, darwin, windows]
+        arch: [amd64, arm64]
+        exclude:
+          - os: windows
+            arch: arm64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Build Provider
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          make build
+          # Rename binary to include OS/arch
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            mv terraform-provider-chainlaunch terraform-provider-chainlaunch_${{ matrix.os }}_${{ matrix.arch }}.exe
+          else
+            mv terraform-provider-chainlaunch terraform-provider-chainlaunch_${{ matrix.os }}_${{ matrix.arch }}
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-provider-chainlaunch_${{ matrix.os }}_${{ matrix.arch }}
+          path: terraform-provider-chainlaunch_${{ matrix.os }}_${{ matrix.arch }}*
+          retention-days: 7
+
+  # Unit tests
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Run Unit Tests
+        run: make test-unit
+
+      - name: Generate Coverage Report
+        run: make test-coverage
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.out
+          flags: unittests
+          fail_ci_if_error: false
+
+  # Acceptance/Integration tests (only on PR/push to main)
+  test-acceptance:
+    name: Acceptance Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+          terraform_wrapper: false
+
+      # Note: You'll need to provide CHAINLAUNCH_URL, CHAINLAUNCH_USERNAME, CHAINLAUNCH_PASSWORD
+      # as secrets or set up a test instance
+      - name: Run Acceptance Tests
+        env:
+          TF_ACC: "1"
+          CHAINLAUNCH_URL: ${{ secrets.CHAINLAUNCH_URL }}
+          CHAINLAUNCH_USERNAME: ${{ secrets.CHAINLAUNCH_USERNAME }}
+          CHAINLAUNCH_PASSWORD: ${{ secrets.CHAINLAUNCH_PASSWORD }}
+        run: |
+          if [ -n "$CHAINLAUNCH_URL" ]; then
+            make test-integration
+          else
+            echo "Skipping acceptance tests - no test instance configured"
+          fi
+
+  # Generate documentation
+  docs:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Install tfplugindocs
+        run: go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest
+
+      - name: Generate Documentation
+        run: make docs
+
+      - name: Validate Documentation
+        run: make docs-validate
+
+      - name: Check for Documentation Changes
+        run: |
+          git diff --exit-code docs/ || (echo "Documentation is out of sync. Run 'make docs' to regenerate." && exit 1)
+
+  # Validate examples
+  validate-examples:
+    name: Validate Examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Build Provider
+        run: make build
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+          terraform_wrapper: false
+
+      - name: Configure Terraform Dev Overrides
+        run: |
+          cat > ~/.terraformrc << EOF
+          provider_installation {
+            dev_overrides {
+              "registry.terraform.io/chainlaunch/chainlaunch" = "${{ github.workspace }}"
+            }
+            direct {}
+          }
+          EOF
+
+      - name: Validate Example Configurations
+        run: |
+          EXIT_CODE=0
+          # Examples that require external providers (skip for now since chainlaunch provider isn't published yet)
+          SKIP_EXAMPLES="backup-with-minio notifications-mailpit"
+
+          for example in examples/*/; do
+            if [ -f "$example/main.tf" ]; then
+              EXAMPLE_NAME=$(basename "$example")
+
+              # Skip examples that need external providers
+              if echo "$SKIP_EXAMPLES" | grep -q "$EXAMPLE_NAME"; then
+                echo "Skipping $example (requires external providers)..."
+                continue
+              fi
+
+              echo "Validating $example..."
+              cd "$example"
+              terraform validate || EXIT_CODE=1
+              cd - > /dev/null
+            fi
+          done
+          exit $EXIT_CODE

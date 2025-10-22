@@ -1,0 +1,85 @@
+provider_name: chainlaunch
+rendered_provider_name: Chainlaunch
+rendered_website_dir: docs
+
+# Ignore generated and template directories
+ignore_deprecated_sub_categories: true
+
+# Skip examples validation since we have complex example structures
+skip_examples_validation: true
+
+# Resource categories
+resource_categories:
+  - name: Fabric
+    resources:
+      - chainlaunch_fabric_organization
+      - chainlaunch_fabric_peer
+      - chainlaunch_fabric_orderer
+      - chainlaunch_fabric_network
+      - chainlaunch_fabric_join_node
+      - chainlaunch_fabric_add_node
+      - chainlaunch_fabric_anchor_peers
+      - chainlaunch_fabric_identity
+      - chainlaunch_fabric_chaincode
+      - chainlaunch_fabric_chaincode_definition
+      - chainlaunch_fabric_chaincode_install
+      - chainlaunch_fabric_chaincode_approve
+      - chainlaunch_fabric_chaincode_commit
+      - chainlaunch_fabric_chaincode_deploy
+  - name: Besu
+    resources:
+      - chainlaunch_besu_network
+      - chainlaunch_besu_node
+  - name: Keys & Security
+    resources:
+      - chainlaunch_key
+      - chainlaunch_key_provider
+  - name: Backup & Monitoring
+    resources:
+      - chainlaunch_backup_target
+      - chainlaunch_backup_schedule
+      - chainlaunch_metrics_prometheus
+      - chainlaunch_metrics_job
+      - chainlaunch_notification_provider
+  - name: Plugins
+    resources:
+      - chainlaunch_plugin
+      - chainlaunch_plugin_deployment
+  - name: Node Management
+    resources:
+      - chainlaunch_node_invitation
+      - chainlaunch_node_accept_invitation
+      - chainlaunch_external_nodes_sync
+  - name: Legacy
+    resources:
+      - chainlaunch_node
+      - chainlaunch_network
+
+# Data source categories
+data_source_categories:
+  - name: Fabric
+    data_sources:
+      - chainlaunch_fabric_organization
+      - chainlaunch_fabric_peer
+      - chainlaunch_fabric_orderer
+      - chainlaunch_fabric_network
+      - chainlaunch_fabric_chaincode
+      - chainlaunch_external_fabric_organizations
+      - chainlaunch_external_fabric_peers
+      - chainlaunch_external_fabric_orderers
+  - name: Besu
+    data_sources:
+      - chainlaunch_besu_network
+      - chainlaunch_besu_node
+      - chainlaunch_external_besu_nodes
+  - name: Keys & Providers
+    data_sources:
+      - chainlaunch_key_provider
+      - chainlaunch_key_providers
+  - name: Plugins
+    data_sources:
+      - chainlaunch_plugin
+  - name: Legacy
+    data_sources:
+      - chainlaunch_node
+      - chainlaunch_network

@@ -1,0 +1,272 @@
+# ==============================================================================
+# PROVIDER CONFIGURATION
+# ==============================================================================
+# Rename this file to terraform.tfvars and update the values
+
+chainlaunch_url      = "http://localhost:8100"
+chainlaunch_username = "admin"
+chainlaunch_password = "admin123"
+
+# ==============================================================================
+# NETWORK CONFIGURATION
+# ==============================================================================
+
+network_name        = "besu-dev-network"
+network_description = "A complete Hyperledger Besu development network"
+chain_id            = 1337              # Custom chain ID
+consensus_mechanism = "qbft"            # QBFT consensus (Byzantine Fault Tolerant)
+
+# Consensus parameters
+block_period    = 2                      # Block time in seconds (faster = more blocks, higher overhead)
+epoch_length    = 30000                  # Blocks before vote reset (30000 recommended for production)
+request_timeout = 10                     # Consensus round timeout in seconds
+gas_limit       = "0x1fffffffffffff"     # Block gas limit in hex (default: ~9 quadrillion gas)
+
+# ==============================================================================
+# NETWORK ENDPOINTS (GLOBAL DEFAULTS)
+# ==============================================================================
+
+# These IPs apply to all nodes by default (can be overridden per node)
+external_ip = "localhost"               # External IP for RPC/P2P access
+internal_ip = "127.0.0.1"               # Internal IP for node binding
+
+# For multi-host deployments, set these per node in the nodes configuration
+# For single-host deployments, use these defaults
+
+# ==============================================================================
+# NODE CONFIGURATION
+# ==============================================================================
+# Example 1: 4-node QBFT network (default)
+# Uses global external_ip and internal_ip from above
+
+nodes = {
+  node0 = {
+    # external_ip and internal_ip inherited from global defaults
+    p2p_host         = "0.0.0.0"
+    p2p_port         = 30303
+    rpc_host         = "0.0.0.0"
+    rpc_port         = 8545
+    mode             = "docker"
+    version          = "24.5.1"
+    min_gas_price    = 1000
+    metrics_enabled  = true
+    metrics_port     = 9545
+    metrics_protocol = "prometheus"
+    host_allow_list  = "*"
+    is_bootnode      = true              # This node is the bootnode
+    environment = {
+      BESU_LOGGING = "INFO"
+      BESU_NETWORK_ID = "1337"
+    }
+  }
+
+  node1 = {
+    # external_ip and internal_ip inherited from global defaults
+    p2p_host         = "0.0.0.0"
+    p2p_port         = 30304
+    rpc_host         = "0.0.0.0"
+    rpc_port         = 8546
+    mode             = "docker"
+    version          = "24.5.1"
+    min_gas_price    = 1000
+    metrics_enabled  = true
+    metrics_port     = 9546
+    metrics_protocol = "prometheus"
+    host_allow_list  = "*"
+    environment = {
+      BESU_LOGGING = "INFO"
+    }
+  }
+
+  node2 = {
+    # external_ip and internal_ip inherited from global defaults
+    p2p_host         = "0.0.0.0"
+    p2p_port         = 30305
+    rpc_host         = "0.0.0.0"
+    rpc_port         = 8547
+    mode             = "docker"
+    version          = "24.5.1"
+    min_gas_price    = 1000
+    metrics_enabled  = true
+    metrics_port     = 9547
+    metrics_protocol = "prometheus"
+    host_allow_list  = "*"
+    environment = {
+      BESU_LOGGING = "INFO"
+    }
+  }
+
+  node3 = {
+    # external_ip and internal_ip inherited from global defaults
+    p2p_host         = "0.0.0.0"
+    p2p_port         = 30306
+    rpc_host         = "0.0.0.0"
+    rpc_port         = 8548
+    mode             = "docker"
+    version          = "24.5.1"
+    min_gas_price    = 1000
+    metrics_enabled  = true
+    metrics_port     = 9548
+    metrics_protocol = "prometheus"
+    host_allow_list  = "*"
+    environment = {
+      BESU_LOGGING = "INFO"
+    }
+  }
+}
+
+# ==============================================================================
+# Example 2: Multi-host deployment with per-node IP overrides (uncomment to use)
+# ==============================================================================
+# Each node runs on a different host, so external_ip is different per node
+
+# nodes = {
+#   node0 = {
+#     external_ip      = "192.168.1.10"  # Override global external_ip for this node
+#     internal_ip      = "192.168.1.10"  # Override global internal_ip for this node
+#     p2p_host         = "0.0.0.0"
+#     p2p_port         = 30303
+#     rpc_host         = "0.0.0.0"
+#     rpc_port         = 8545
+#     mode             = "docker"
+#     version          = "24.5.1"
+#     metrics_enabled  = true
+#     metrics_port     = 9545
+#     metrics_protocol = "prometheus"
+#     host_allow_list  = "*"
+#     jwt_enabled      = true
+#     jwt_algorithm    = "RS256"
+#     is_bootnode      = true
+#   }
+#   node1 = {
+#     external_ip      = "192.168.1.11"  # Different host
+#     internal_ip      = "192.168.1.11"
+#     p2p_host         = "0.0.0.0"
+#     p2p_port         = 30303
+#     rpc_host         = "0.0.0.0"
+#     rpc_port         = 8545
+#     mode             = "docker"
+#     version          = "24.5.1"
+#     metrics_enabled  = true
+#     metrics_port     = 9545
+#     jwt_enabled      = true
+#     jwt_algorithm    = "RS256"
+#   }
+#   node2 = {
+#     external_ip      = "192.168.1.12"  # Different host
+#     internal_ip      = "192.168.1.12"
+#     p2p_host         = "0.0.0.0"
+#     p2p_port         = 30303
+#     rpc_host         = "0.0.0.0"
+#     rpc_port         = 8545
+#     mode             = "docker"
+#     version          = "24.5.1"
+#     metrics_enabled  = true
+#     metrics_port     = 9545
+#     jwt_enabled      = true
+#     jwt_algorithm    = "RS256"
+#   }
+#   node3 = {
+#     external_ip      = "192.168.1.13"  # Different host
+#     internal_ip      = "192.168.1.13"
+#     p2p_host         = "0.0.0.0"
+#     p2p_port         = 30303
+#     rpc_host         = "0.0.0.0"
+#     rpc_port         = 8545
+#     mode             = "docker"
+#     version          = "24.5.1"
+#     metrics_enabled  = true
+#     metrics_port     = 9545
+#     jwt_enabled      = true
+#     jwt_algorithm    = "RS256"
+#   }
+# }
+
+# ==============================================================================
+# Example 3: IBFT2 consensus (uncomment to use)
+# ==============================================================================
+# Uses global external_ip/internal_ip defaults
+
+# consensus_mechanism = "ibft2"
+#
+# nodes = {
+#   node0 = {
+#     # IPs inherited from global defaults
+#     p2p_host         = "0.0.0.0"
+#     p2p_port         = 30303
+#     rpc_host         = "0.0.0.0"
+#     rpc_port         = 8545
+#     mode             = "docker"
+#     version          = "24.5.1"
+#     metrics_enabled  = true
+#     metrics_port     = 9545
+#     is_bootnode      = true
+#   }
+#   node1 = {
+#     p2p_host         = "0.0.0.0"
+#     p2p_port         = 30304
+#     rpc_host         = "0.0.0.0"
+#     rpc_port         = 8546
+#     mode             = "docker"
+#     version          = "24.5.1"
+#     metrics_enabled  = true
+#     metrics_port     = 9546
+#   }
+#   node2 = {
+#     p2p_host         = "0.0.0.0"
+#     p2p_port         = 30305
+#     rpc_host         = "0.0.0.0"
+#     rpc_port         = 8547
+#     mode             = "docker"
+#     version          = "24.5.1"
+#     metrics_enabled  = true
+#     metrics_port     = 9547
+#   }
+#   node3 = {
+#     p2p_host         = "0.0.0.0"
+#     p2p_port         = 30306
+#     rpc_host         = "0.0.0.0"
+#     rpc_port         = 8548
+#     mode             = "docker"
+#     version          = "24.5.1"
+#     metrics_enabled  = true
+#     metrics_port     = 9548
+#   }
+# }
+
+# ==============================================================================
+# Example 4: Minimal 2-node development setup (uncomment to use)
+# ==============================================================================
+# Uses global external_ip/internal_ip defaults
+
+# nodes = {
+#   node0 = {
+#     # IPs inherited from global defaults
+#     p2p_host        = "0.0.0.0"
+#     p2p_port        = 30303
+#     rpc_host        = "0.0.0.0"
+#     rpc_port        = 8545
+#     mode            = "docker"
+#     metrics_enabled = false
+#     is_bootnode     = true
+#   }
+#   node1 = {
+#     # IPs inherited from global defaults
+#     p2p_host        = "0.0.0.0"
+#     p2p_port        = 30304
+#     rpc_host        = "0.0.0.0"
+#     rpc_port        = 8546
+#     mode            = "docker"
+#     metrics_enabled = false
+#   }
+# }
+
+# ==============================================================================
+# KEY PROVIDER
+# ==============================================================================
+
+# Key provider type - database supports secp256k1 curve (Ethereum)
+key_provider_type = "database"
+
+# Alternatively, use AWS KMS (also supports secp256k1)
+# key_provider_type = "awskms"

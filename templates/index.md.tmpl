@@ -1,0 +1,27 @@
+---
+page_title: "Chainlaunch Provider"
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# Chainlaunch Provider
+
+{{ .Description | trimspace }}
+
+## Features
+
+- **Hyperledger Fabric Management**: Create and manage Fabric organizations, peers, orderers, channels, and chaincodes
+- **Hyperledger Besu Networks**: Deploy Besu networks with QBFT or IBFT2 consensus
+- **Key Management**: Support for multiple key providers (Database, AWS KMS, HashiCorp Vault)
+- **Automated Backups**: S3-compatible backup targets with scheduled backups
+- **Monitoring & Alerts**: Prometheus metrics integration and email notifications
+- **Plugin System**: Extend platform functionality with custom Docker Compose-based plugins
+- **Infrastructure as Code**: Declarative blockchain network configuration with Terraform
+
+{{ if .HasExample -}}
+## Example Usage
+
+{{tffile .ExampleFile }}
+{{- end }}
+
+{{ .SchemaMarkdown | trimspace }}
