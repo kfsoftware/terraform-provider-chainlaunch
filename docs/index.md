@@ -25,7 +25,7 @@ Interact with Chainlaunch to manage Hyperledger Fabric organizations, nodes, net
 terraform {
   required_providers {
     chainlaunch = {
-      source = "registry.terraform.io/chainlaunch/chainlaunch"
+      source = "registry.terraform.io/kfsoftware/chainlaunch"
     }
   }
 }

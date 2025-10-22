@@ -211,7 +211,7 @@ jobs:
           cat > ~/.terraformrc << EOF
           provider_installation {
             dev_overrides {
-              "registry.terraform.io/chainlaunch/chainlaunch" = "${{ github.workspace }}"
+              "registry.terraform.io/kfsoftware/chainlaunch" = "${{ github.workspace }}"
             }
             direct {}
           }

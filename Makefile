@@ -6,8 +6,8 @@ build:
 
 # Install the provider locally
 install: build
-	mkdir -p ~/.terraform.d/plugins/registry.terraform.io/chainlaunch/chainlaunch/1.0.0/$$(go env GOOS)_$$(go env GOARCH)
-	mv terraform-provider-chainlaunch ~/.terraform.d/plugins/registry.terraform.io/chainlaunch/chainlaunch/1.0.0/$$(go env GOOS)_$$(go env GOARCH)/
+	mkdir -p ~/.terraform.d/plugins/registry.terraform.io/kfsoftware/chainlaunch/1.0.0/$$(go env GOOS)_$$(go env GOARCH)
+	mv terraform-provider-chainlaunch ~/.terraform.d/plugins/registry.terraform.io/kfsoftware/chainlaunch/1.0.0/$$(go env GOOS)_$$(go env GOARCH)/
 
 # Generate API client from swagger.yaml
 generate:

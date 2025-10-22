@@ -30,7 +30,7 @@ Alternatively, for development, create `~/.terraformrc`:
 ```hcl
 provider_installation {
   dev_overrides {
-    "registry.terraform.io/chainlaunch/chainlaunch" = "/path/to/terraform-provider-chainlaunch"
+    "registry.terraform.io/kfsoftware/chainlaunch" = "/path/to/terraform-provider-chainlaunch"
   }
   direct {}
 }
@@ -84,7 +84,7 @@ Create a `main.tf` file:
 terraform {
   required_providers {
     chainlaunch = {
-      source = "registry.terraform.io/chainlaunch/chainlaunch"
+      source = "registry.terraform.io/kfsoftware/chainlaunch"
     }
   }
 }

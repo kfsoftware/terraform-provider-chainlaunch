@@ -2,7 +2,7 @@
 terraform {
   required_providers {
     chainlaunch = {
-      source = "registry.terraform.io/chainlaunch/chainlaunch"
+      source = "registry.terraform.io/kfsoftware/chainlaunch"
     }
   }
 }

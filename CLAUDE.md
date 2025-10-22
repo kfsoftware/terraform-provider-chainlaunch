@@ -51,7 +51,7 @@ make test-coverage
 ```hcl
 provider_installation {
   dev_overrides {
-    "registry.terraform.io/chainlaunch/chainlaunch" = "/absolute/path/to/terraform-provider-chainlaunch"
+    "registry.terraform.io/kfsoftware/chainlaunch" = "/absolute/path/to/terraform-provider-chainlaunch"
   }
   direct {}
 }

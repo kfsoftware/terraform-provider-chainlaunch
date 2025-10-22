@@ -29,7 +29,7 @@ Add the following to your Terraform configuration:
 terraform {
   required_providers {
     chainlaunch = {
-      source  = "chainlaunch/chainlaunch"
+      source  = "kfsoftware/chainlaunch"
       version = "~> 1.0"
     }
   }
@@ -208,7 +208,7 @@ Here's a complete example that sets up a Fabric network with organizations, node
 terraform {
   required_providers {
     chainlaunch = {
-      source  = "chainlaunch/chainlaunch"
+      source  = "kfsoftware/chainlaunch"
       version = "~> 1.0"
     }
   }
@@ -409,7 +409,7 @@ go build -o terraform-provider-chainlaunch
 ```hcl
 provider_installation {
   dev_overrides {
-    "chainlaunch/chainlaunch" = "/path/to/terraform-provider-chainlaunch"
+    "kfsoftware/chainlaunch" = "/path/to/terraform-provider-chainlaunch"
   }
   direct {}
 }
