@@ -87,7 +87,7 @@ jobs:
           fi
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: terraform-provider-chainlaunch_${{ matrix.os }}_${{ matrix.arch }}
           path: terraform-provider-chainlaunch_${{ matrix.os }}_${{ matrix.arch }}*
