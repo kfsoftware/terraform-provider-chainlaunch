@@ -68,6 +68,12 @@ type ListBesuNetworksParams struct {
 	*/
 	Limit *int64
 
+	/* Name.
+
+	   Filter by network name (partial match)
+	*/
+	Name *string
+
 	/* Offset.
 
 	   Number of items to skip (default: 0)
@@ -138,6 +144,17 @@ func (o *ListBesuNetworksParams) SetLimit(limit *int64) {
 	o.Limit = limit
 }
 
+// WithName adds the name to the list besu networks params
+func (o *ListBesuNetworksParams) WithName(name *string) *ListBesuNetworksParams {
+	o.SetName(name)
+	return o
+}
+
+// SetName adds the name to the list besu networks params
+func (o *ListBesuNetworksParams) SetName(name *string) {
+	o.Name = name
+}
+
 // WithOffset adds the offset to the list besu networks params
 func (o *ListBesuNetworksParams) WithOffset(offset *int64) *ListBesuNetworksParams {
 	o.SetOffset(offset)
@@ -169,6 +186,23 @@ func (o *ListBesuNetworksParams) WriteToRequest(r runtime.ClientRequest, reg str
 		if qLimit != "" {
 
 			if err := r.SetQueryParam("limit", qLimit); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.Name != nil {
+
+		// query param name
+		var qrName string
+
+		if o.Name != nil {
+			qrName = *o.Name
+		}
+		qName := qrName
+		if qName != "" {
+
+			if err := r.SetQueryParam("name", qName); err != nil {
 				return err
 			}
 		}

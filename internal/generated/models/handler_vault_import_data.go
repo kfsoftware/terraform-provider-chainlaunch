@@ -19,15 +19,6 @@ import (
 // swagger:model handler.VaultImportData
 type HandlerVaultImportData struct {
 
-	// Optional: Vault paths for admin keys
-	AdminSignPath string `json:"adminSignPath,omitempty"`
-
-	// admin Tls path
-	AdminTLSPath string `json:"adminTlsPath,omitempty"`
-
-	// Optional: Vault paths for client keys
-	ClientSignPath string `json:"clientSignPath,omitempty"`
-
 	// Vault paths for CA certificates and keys
 	// Required: true
 	SignCaPath *string `json:"signCaPath"`

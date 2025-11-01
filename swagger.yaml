@@ -1334,6 +1334,9 @@ definitions:
     properties:
       error:
         type: string
+      message:
+        description: Optional message with sync details
+        type: string
       success:
         type: boolean
     type: object
@@ -1952,6 +1955,11 @@ definitions:
     type: object
   handler.CreateIdentityRequest:
     properties:
+      certValidFor:
+        description: |-
+          Optional: Certificate validity (Go duration format, e.g., "8760h" for 1 year)
+          If not provided, defaults to 1 year
+        type: string
       description:
         description: 'Optional: Description for the identity'
         type: string
@@ -2027,6 +2035,13 @@ definitions:
     type: object
   handler.CreateOrganizationRequest:
     properties:
+      caCertValidFor:
+        description: Certificate validity configuration (Go duration format)
+        type: string
+      certValidFor:
+        description: 'Validity for admin/client/peer certificates (e.g., "8760h" for
+          1 year). Default: 8760h (1 year)'
+        type: string
       country:
         description: CA certificate properties
         items:
@@ -2179,13 +2194,6 @@ definitions:
         type: integer
       status:
         type: string
-    type: object
-  handler.ListKeysResponse:
-    properties:
-      keys:
-        additionalProperties:
-          $ref: '#/definitions/handler.KeyResponse'
-        type: object
     type: object
   handler.OrganizationResponse:
     properties:
@@ -2386,6 +2394,33 @@ definitions:
       wasExported:
         description: Was private key exported (or generated locally)
         type: boolean
+    type: object
+  handler.TunePKIMountRequest:
+    properties:
+      defaultCaCertTtl:
+        description: 10 years default for CA certs
+        example: 87600h
+        type: string
+      defaultCertTtl:
+        description: 1 year default for regular certs
+        example: 8760h
+        type: string
+      defaultLeaseTtl:
+        description: 'Deprecated: use DefaultCertTtl'
+        example: 8760h
+        type: string
+      maxCaCertTtl:
+        description: 10 years max for CA certs
+        example: 87600h
+        type: string
+      maxCertTtl:
+        description: 1 year max for regular certs
+        example: 8760h
+        type: string
+      maxLeaseTtl:
+        description: 'Deprecated: use MaxCaCertTtl'
+        example: 87600h
+        type: string
     type: object
   handler.UpdateOrganizationRequest:
     properties:
@@ -3018,6 +3053,11 @@ definitions:
           AWS region (required for S3 type)
           @Example "us-east-1"
         type: string
+      resticPassword:
+        description: |-
+          Restic repository password (optional - will be auto-generated if not provided)
+          @Example "my-secure-password-123"
+        type: string
       secretKey:
         description: AWS secret key (required for S3 type)
         type: string
@@ -3102,12 +3142,12 @@ definitions:
             type: string
           initialValidatorsKeyIds:
             description: |-
-              @Description List of initial validator key IDs
+              @Description List of initial validator key IDs (minimum 4 required for QBFT consensus and Byzantine Fault Tolerance)
               @Required
-              @MinItems 1
+              @MinItems 4
             items:
               type: integer
-            minItems: 1
+            minItems: 4
             type: array
           mixHash:
             description: '@Description Optional mix hash value'
@@ -3806,6 +3846,8 @@ definitions:
       name:
         type: string
       region:
+        type: string
+      resticPassword:
         type: string
       secretKey:
         type: string
@@ -5383,6 +5425,33 @@ definitions:
       error:
         type: string
     type: object
+  response.NodeCreationErrorDetails:
+    properties:
+      node:
+        description: |-
+          Node contains the partial node data (only set if NodeCreated is true)
+          This can be of type interface{} to accept any node type (FabricPeer, FabricOrderer, BesuNode)
+      node_created:
+        description: NodeCreated indicates whether the node was created in the database
+        type: boolean
+      node_id:
+        description: NodeID is the database ID of the node (only set if NodeCreated
+          is true)
+        type: integer
+      stage:
+        description: Stage indicates at which stage the failure occurred (validation,
+          db_insert, initialization, deployment_config, startup, connectivity)
+        type: string
+    type: object
+  response.NodeCreationErrorResponse:
+    properties:
+      details:
+        $ref: '#/definitions/response.NodeCreationErrorDetails'
+      error:
+        type: string
+      message:
+        type: string
+    type: object
   response.Response:
     properties:
       data: {}
@@ -5889,6 +5958,33 @@ definitions:
       node_id:
         type: string
       read_at:
+        type: string
+    type: object
+  service.OrganizationKeyDTO:
+    properties:
+      certificate:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      identityType:
+        type: string
+      keyAlgorithm:
+        type: string
+      keyExpiresAt:
+        type: string
+      keyId:
+        type: integer
+      keyName:
+        type: string
+      keyPurpose:
+        type: string
+      keyStatus:
+        type: string
+      organizationId:
+        type: integer
+      publicKey:
         type: string
     type: object
   service.QbftPendingVotes:
@@ -10023,6 +10119,86 @@ paths:
       summary: Stop Vault instance
       tags:
       - Key Providers
+  /key-providers/{id}/vault/tune-pki:
+    post:
+      consumes:
+      - application/json
+      description: Configure the PKI mount TTL settings for a Vault provider
+      operationId: tunePKIMount
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: PKI mount tuning parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.TunePKIMountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: PKI mount tuned successfully
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "404":
+          description: Provider not found
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "500":
+          description: Failed to tune PKI mount
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+      security:
+      - BasicAuth: []
+      - CookieAuth: []
+      summary: Tune PKI Mount
+      tags:
+      - Key Providers
+  /key-providers/{id}/vault/unseal:
+    post:
+      consumes:
+      - application/json
+      description: Manually unseal a HashiCorp Vault instance
+      operationId: unsealVault
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Vault successfully unsealed
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "404":
+          description: Provider not found
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "500":
+          description: Failed to unseal
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+      security:
+      - BasicAuth: []
+      - CookieAuth: []
+      summary: Unseal Vault
+      tags:
+      - Key Providers
   /keys:
     get:
       consumes:
@@ -13457,9 +13633,10 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal server error
+          description: Node creation failed (may include partial success details with
+            node_id and stage)
           schema:
-            $ref: '#/definitions/response.ErrorResponse'
+            $ref: '#/definitions/response.NodeCreationErrorResponse'
       security:
       - BasicAuth: []
       - CookieAuth: []
@@ -16192,6 +16369,55 @@ paths:
       tags:
       - Organizations
   /organizations/{id}/identities:
+    get:
+      consumes:
+      - application/json
+      description: Get all identities (keys) created for an organization, grouped
+        by identity type and key purpose
+      operationId: getOrganizationKeys
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Filter by identity type (admin, client, peer)
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/service.OrganizationKeyDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BasicAuth: []
+      - CookieAuth: []
+      summary: Get all identities (keys) for an organization
+      tags:
+      - Organizations
     post:
       consumes:
       - application/json
@@ -16244,7 +16470,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get all keys associated with an organization
+      description: Get all keys associated with an organization from the organization_keys
+        table
       operationId: listOrganizationKeys
       parameters:
       - description: Organization ID
@@ -16258,7 +16485,9 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.ListKeysResponse'
+            items:
+              $ref: '#/definitions/service.OrganizationKeyDTO'
+            type: array
         "400":
           description: Bad Request
           schema:

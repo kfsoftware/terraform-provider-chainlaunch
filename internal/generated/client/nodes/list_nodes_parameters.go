@@ -70,6 +70,30 @@ type ListNodesParams struct {
 	*/
 	Limit *int64
 
+	/* Name.
+
+	   Filter by node name (partial match, case-insensitive)
+	*/
+	Name *string
+
+	/* NetworkID.
+
+	   Filter by network ID
+	*/
+	NetworkID *int64
+
+	/* NodeType.
+
+	   Filter by node type
+	*/
+	NodeType *string
+
+	/* OrganizationID.
+
+	   Filter by organization ID (Fabric nodes only)
+	*/
+	OrganizationID *int64
+
 	/* Page.
 
 	   Page number
@@ -83,6 +107,18 @@ type ListNodesParams struct {
 	   Filter by blockchain platform
 	*/
 	Platform *string
+
+	/* Slug.
+
+	   Filter by node slug (exact match)
+	*/
+	Slug *string
+
+	/* Status.
+
+	   Filter by node status
+	*/
+	Status *string
 
 	timeout    time.Duration
 	Context    context.Context
@@ -162,6 +198,50 @@ func (o *ListNodesParams) SetLimit(limit *int64) {
 	o.Limit = limit
 }
 
+// WithName adds the name to the list nodes params
+func (o *ListNodesParams) WithName(name *string) *ListNodesParams {
+	o.SetName(name)
+	return o
+}
+
+// SetName adds the name to the list nodes params
+func (o *ListNodesParams) SetName(name *string) {
+	o.Name = name
+}
+
+// WithNetworkID adds the networkID to the list nodes params
+func (o *ListNodesParams) WithNetworkID(networkID *int64) *ListNodesParams {
+	o.SetNetworkID(networkID)
+	return o
+}
+
+// SetNetworkID adds the networkId to the list nodes params
+func (o *ListNodesParams) SetNetworkID(networkID *int64) {
+	o.NetworkID = networkID
+}
+
+// WithNodeType adds the nodeType to the list nodes params
+func (o *ListNodesParams) WithNodeType(nodeType *string) *ListNodesParams {
+	o.SetNodeType(nodeType)
+	return o
+}
+
+// SetNodeType adds the nodeType to the list nodes params
+func (o *ListNodesParams) SetNodeType(nodeType *string) {
+	o.NodeType = nodeType
+}
+
+// WithOrganizationID adds the organizationID to the list nodes params
+func (o *ListNodesParams) WithOrganizationID(organizationID *int64) *ListNodesParams {
+	o.SetOrganizationID(organizationID)
+	return o
+}
+
+// SetOrganizationID adds the organizationId to the list nodes params
+func (o *ListNodesParams) SetOrganizationID(organizationID *int64) {
+	o.OrganizationID = organizationID
+}
+
 // WithPage adds the page to the list nodes params
 func (o *ListNodesParams) WithPage(page *int64) *ListNodesParams {
 	o.SetPage(page)
@@ -184,6 +264,28 @@ func (o *ListNodesParams) SetPlatform(platform *string) {
 	o.Platform = platform
 }
 
+// WithSlug adds the slug to the list nodes params
+func (o *ListNodesParams) WithSlug(slug *string) *ListNodesParams {
+	o.SetSlug(slug)
+	return o
+}
+
+// SetSlug adds the slug to the list nodes params
+func (o *ListNodesParams) SetSlug(slug *string) {
+	o.Slug = slug
+}
+
+// WithStatus adds the status to the list nodes params
+func (o *ListNodesParams) WithStatus(status *string) *ListNodesParams {
+	o.SetStatus(status)
+	return o
+}
+
+// SetStatus adds the status to the list nodes params
+func (o *ListNodesParams) SetStatus(status *string) {
+	o.Status = status
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *ListNodesParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -204,6 +306,74 @@ func (o *ListNodesParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Reg
 		if qLimit != "" {
 
 			if err := r.SetQueryParam("limit", qLimit); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.Name != nil {
+
+		// query param name
+		var qrName string
+
+		if o.Name != nil {
+			qrName = *o.Name
+		}
+		qName := qrName
+		if qName != "" {
+
+			if err := r.SetQueryParam("name", qName); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.NetworkID != nil {
+
+		// query param networkId
+		var qrNetworkID int64
+
+		if o.NetworkID != nil {
+			qrNetworkID = *o.NetworkID
+		}
+		qNetworkID := swag.FormatInt64(qrNetworkID)
+		if qNetworkID != "" {
+
+			if err := r.SetQueryParam("networkId", qNetworkID); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.NodeType != nil {
+
+		// query param nodeType
+		var qrNodeType string
+
+		if o.NodeType != nil {
+			qrNodeType = *o.NodeType
+		}
+		qNodeType := qrNodeType
+		if qNodeType != "" {
+
+			if err := r.SetQueryParam("nodeType", qNodeType); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.OrganizationID != nil {
+
+		// query param organizationId
+		var qrOrganizationID int64
+
+		if o.OrganizationID != nil {
+			qrOrganizationID = *o.OrganizationID
+		}
+		qOrganizationID := swag.FormatInt64(qrOrganizationID)
+		if qOrganizationID != "" {
+
+			if err := r.SetQueryParam("organizationId", qOrganizationID); err != nil {
 				return err
 			}
 		}
@@ -238,6 +408,40 @@ func (o *ListNodesParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Reg
 		if qPlatform != "" {
 
 			if err := r.SetQueryParam("platform", qPlatform); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.Slug != nil {
+
+		// query param slug
+		var qrSlug string
+
+		if o.Slug != nil {
+			qrSlug = *o.Slug
+		}
+		qSlug := qrSlug
+		if qSlug != "" {
+
+			if err := r.SetQueryParam("slug", qSlug); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.Status != nil {
+
+		// query param status
+		var qrStatus string
+
+		if o.Status != nil {
+			qrStatus = *o.Status
+		}
+		qStatus := qrStatus
+		if qStatus != "" {
+
+			if err := r.SetQueryParam("status", qStatus); err != nil {
 				return err
 			}
 		}

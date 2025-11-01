@@ -70,6 +70,12 @@ type ListFabricOrganizationsParams struct {
 	*/
 	Limit *int64
 
+	/* MspID.
+
+	   Filter by MSP ID (optional)
+	*/
+	MspID *string
+
 	/* Offset.
 
 	   Number of organizations to skip
@@ -154,6 +160,17 @@ func (o *ListFabricOrganizationsParams) SetLimit(limit *int64) {
 	o.Limit = limit
 }
 
+// WithMspID adds the mspID to the list fabric organizations params
+func (o *ListFabricOrganizationsParams) WithMspID(mspID *string) *ListFabricOrganizationsParams {
+	o.SetMspID(mspID)
+	return o
+}
+
+// SetMspID adds the mspId to the list fabric organizations params
+func (o *ListFabricOrganizationsParams) SetMspID(mspID *string) {
+	o.MspID = mspID
+}
+
 // WithOffset adds the offset to the list fabric organizations params
 func (o *ListFabricOrganizationsParams) WithOffset(offset *int64) *ListFabricOrganizationsParams {
 	o.SetOffset(offset)
@@ -185,6 +202,23 @@ func (o *ListFabricOrganizationsParams) WriteToRequest(r runtime.ClientRequest, 
 		if qLimit != "" {
 
 			if err := r.SetQueryParam("limit", qLimit); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.MspID != nil {
+
+		// query param mspId
+		var qrMspID string
+
+		if o.MspID != nil {
+			qrMspID = *o.MspID
+		}
+		qMspID := qrMspID
+		if qMspID != "" {
+
+			if err := r.SetQueryParam("mspId", qMspID); err != nil {
 				return err
 			}
 		}

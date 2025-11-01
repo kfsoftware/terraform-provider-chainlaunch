@@ -105,6 +105,41 @@ resource "chainlaunch_external_nodes_sync" "node1_sync_from_node2" {
 }
 
 # ==============================================================================
+# ALTERNATIVE: Sync from ALL connected peers automatically
+# ==============================================================================
+# Instead of manually syncing from each peer (STEP 5 & 6), you can use
+# chainlaunch_sync_all_external_nodes to automatically sync from ALL
+# connected peers without specifying peer_node_id for each one.
+# ==============================================================================
+
+# Uncomment to use automatic sync for all peers:
+# resource "chainlaunch_sync_all_external_nodes" "node2_sync_all" {
+#   provider = chainlaunch.node2
+#
+#   # No configuration needed - automatically discovers and syncs from all connected peers
+#
+#   depends_on = [
+#     chainlaunch_node_accept_invitation.node2_accepts_node1,
+#     # Add more node acceptances here as needed
+#   ]
+# }
+
+# resource "chainlaunch_sync_all_external_nodes" "node1_sync_all" {
+#   provider = chainlaunch.node1
+#
+#   depends_on = [
+#     chainlaunch_node_accept_invitation.node1_accepts_node2,
+#   ]
+# }
+
+# Benefits of chainlaunch_sync_all_external_nodes:
+# - Automatic discovery of all connected peers
+# - No need to specify peer_node_id for each peer
+# - Aggregated results across all peers
+# - Per-peer sync status and error tracking
+# - Continues syncing even if one peer fails
+
+# ==============================================================================
 # STEP 7: Query synced external nodes
 # ==============================================================================
 # After syncing, you can query the external nodes that have been imported

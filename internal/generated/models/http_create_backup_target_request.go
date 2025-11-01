@@ -48,6 +48,10 @@ type HTTPCreateBackupTargetRequest struct {
 	// @Example "us-east-1"
 	Region string `json:"region,omitempty"`
 
+	// Restic repository password (optional - will be auto-generated if not provided)
+	// @Example "my-secure-password-123"
+	ResticPassword string `json:"resticPassword,omitempty"`
+
 	// AWS secret key (required for S3 type)
 	SecretKey string `json:"secretKey,omitempty"`
 

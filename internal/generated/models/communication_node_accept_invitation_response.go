@@ -20,6 +20,9 @@ type CommunicationNodeAcceptInvitationResponse struct {
 	// error
 	Error string `json:"error,omitempty"`
 
+	// Optional message with sync details
+	Message string `json:"message,omitempty"`
+
 	// success
 	Success bool `json:"success,omitempty"`
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -130,14 +131,68 @@ func (r *NodeResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 
 	body, err := r.client.DoRequest("POST", "/nodes", createReq)
+	var node Node
+
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create node, got error: %s", err))
-		return
+		// Try to parse as NodeCreationErrorResponse to check if node was created in DB
+		var errResp struct {
+			Error   string `json:"error"`
+			Message string `json:"message"`
+			Details struct {
+				NodeCreated bool        `json:"node_created"`
+				NodeID      int64       `json:"node_id"`
+				Stage       string      `json:"stage"`
+				Node        interface{} `json:"node"` // Contains the actual node data
+			} `json:"details"`
+		}
+
+		// If we can parse the error response and node was NOT created, don't save to state
+		if parseErr := json.Unmarshal(body, &errResp); parseErr == nil && errResp.Details.Stage != "" {
+			if !errResp.Details.NodeCreated {
+				// Node was NOT created in database - don't save to state
+				resp.Diagnostics.AddError(
+					"Node Creation Failed",
+					fmt.Sprintf("Node creation failed at stage '%s': %s\nNode was not created in the database and will not be saved to state.",
+						errResp.Details.Stage, errResp.Message),
+				)
+				return
+			}
+			// Node WAS created in database but deployment failed - fetch full node details from API
+			resp.Diagnostics.AddWarning(
+				"Node Partially Created",
+				fmt.Sprintf("Node was created in database (ID: %d) but deployment failed at stage '%s': %s\nThe node will be saved to state so you can manage or delete it.",
+					errResp.Details.NodeID, errResp.Details.Stage, errResp.Message),
+			)
+
+			// Fetch the full node details from the API
+			nodeBody, getErr := r.client.DoRequest("GET", fmt.Sprintf("/nodes/%d", errResp.Details.NodeID), nil)
+			if getErr != nil {
+				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Node was created (ID: %d) but unable to fetch node details: %s", errResp.Details.NodeID, getErr))
+				return
+			}
+			if unmarshalErr := json.Unmarshal(nodeBody, &node); unmarshalErr != nil {
+				resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse node details: %s\nResponse body: %s", unmarshalErr, string(nodeBody)))
+				return
+			}
+		} else {
+			// Generic error without node creation details
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create node, got error: %s", err))
+			return
+		}
+	} else {
+		// Success case - parse the response body as Node
+		if err := json.Unmarshal(body, &node); err != nil {
+			resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse node response, got error: %s\nResponse body: %s", err, string(body)))
+			return
+		}
 	}
 
-	var node Node
-	if err := json.Unmarshal(body, &node); err != nil {
-		resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse node response, got error: %s", err))
+	// Validate that we have a valid node ID before saving to state
+	if node.ID == 0 {
+		resp.Diagnostics.AddError(
+			"Invalid Node Response",
+			fmt.Sprintf("Node creation failed: API returned invalid or empty node ID. Response body: %s", string(body)),
+		)
 		return
 	}
 
@@ -155,6 +210,11 @@ func (r *NodeResource) Create(ctx context.Context, req resource.CreateRequest, r
 		data.UpdatedAt = types.StringValue(node.UpdatedAt)
 	}
 
+	// Only save to state if no errors occurred
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -168,6 +228,13 @@ func (r *NodeResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 
 	body, err := r.client.DoRequest("GET", fmt.Sprintf("/nodes/%s", data.ID.ValueString()), nil)
 	if err != nil {
+		// Check if the error is a NOT_FOUND error
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "not_found") || strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "404") {
+			// Node was deleted outside of Terraform - remove from state
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read node, got error: %s", err))
 		return
 	}
@@ -175,6 +242,13 @@ func (r *NodeResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	var node Node
 	if err := json.Unmarshal(body, &node); err != nil {
 		resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse node response, got error: %s", err))
+		return
+	}
+
+	// Validate that we got a valid node
+	if node.ID == 0 {
+		// Invalid response - node might have been deleted
+		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -261,6 +335,12 @@ func (r *NodeResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 
 	_, err := r.client.DoRequest("DELETE", fmt.Sprintf("/nodes/%s", data.ID.ValueString()), nil)
 	if err != nil {
+		// Check if the error is a NOT_FOUND error - if so, the node is already gone, which is fine
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "not_found") || strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "404") {
+			// Node already deleted - this is not an error for deletion
+			return
+		}
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete node, got error: %s", err))
 		return
 	}

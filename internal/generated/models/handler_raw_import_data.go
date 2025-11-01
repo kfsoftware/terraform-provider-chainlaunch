@@ -19,29 +19,11 @@ import (
 // swagger:model handler.RawImportData
 type HandlerRawImportData struct {
 
-	// Optional: Admin certificates and keys
-	AdminSignCert string `json:"adminSignCert,omitempty"`
-
-	// admin sign private key
-	AdminSignPrivateKey string `json:"adminSignPrivateKey,omitempty"`
-
-	// admin Tls cert
-	AdminTLSCert string `json:"adminTlsCert,omitempty"`
-
-	// admin Tls private key
-	AdminTLSPrivateKey string `json:"adminTlsPrivateKey,omitempty"`
-
-	// Optional: Client certificates and keys
-	ClientSignCert string `json:"clientSignCert,omitempty"`
-
-	// client sign private key
-	ClientSignPrivateKey string `json:"clientSignPrivateKey,omitempty"`
-
 	// Required: CA certificates
 	// Required: true
 	SignCaCert *string `json:"signCaCert"`
 
-	// Optional: CA private keys (if available)
+	// Optional: CA private keys (if available, allows generating new identities)
 	SignCaPrivateKey string `json:"signCaPrivateKey,omitempty"`
 
 	// PEM-encoded TLS CA certificate

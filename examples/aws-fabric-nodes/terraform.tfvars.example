@@ -1,0 +1,87 @@
+# ==============================================================================
+# AWS Configuration
+# ==============================================================================
+
+# AWS region where resources will be created
+aws_region = "us-east-1"
+
+# Name of your EC2 key pair (must exist in the region)
+# Create with: aws ec2 create-key-pair --key-name fabric-nodes --query 'KeyMaterial' --output text > ~/.ssh/fabric-nodes.pem
+key_pair_name = "fabric-nodes"
+
+# EC2 instance type for blockchain nodes
+# Options: t3.small, t3.medium, t3.large, t3.xlarge
+instance_type = "t3.medium"
+
+# ==============================================================================
+# Chainlaunch Configuration
+# ==============================================================================
+
+# URL of your Chainlaunch instance
+chainlaunch_url = "https://your-chainlaunch-instance.com"
+
+# Chainlaunch admin credentials
+chainlaunch_username = "admin"
+chainlaunch_password = "your-secure-password"
+
+# ==============================================================================
+# Network Configuration
+# ==============================================================================
+
+# Project name (used for resource naming)
+project_name = "fabric-network"
+
+# Environment (dev, staging, prod)
+environment = "dev"
+
+# Hyperledger Fabric version
+fabric_version = "2.5.9"
+
+# ==============================================================================
+# Peer Nodes Configuration
+# ==============================================================================
+
+peer_nodes = {
+  # Organization 1
+  "peer0-org1" = {
+    organization = "Org1"
+  }
+  "peer1-org1" = {
+    organization = "Org1"
+  }
+
+  # Organization 2
+  "peer0-org2" = {
+    organization = "Org2"
+  }
+  "peer1-org2" = {
+    organization = "Org2"
+  }
+
+  # Add more peers as needed
+  # "peer0-org3" = {
+  #   organization = "Org3"
+  # }
+}
+
+# ==============================================================================
+# Orderer Nodes Configuration
+# ==============================================================================
+
+orderer_nodes = {
+  # Orderer cluster (3 nodes for production, 1 for dev)
+  "orderer0" = {
+    organization = "OrdererOrg"
+  }
+  "orderer1" = {
+    organization = "OrdererOrg"
+  }
+  "orderer2" = {
+    organization = "OrdererOrg"
+  }
+
+  # Add more orderers for larger networks
+  # "orderer3" = {
+  #   organization = "OrdererOrg"
+  # }
+}

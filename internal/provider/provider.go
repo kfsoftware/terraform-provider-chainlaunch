@@ -170,11 +170,13 @@ func (p *ChainlaunchProvider) Resources(ctx context.Context) []func() resource.R
 		NewNodeInvitationResource,
 		NewNodeAcceptInvitationResource,
 		NewExternalNodesSyncResource,
+		NewSyncAllExternalNodesResource,
 		NewMetricsPrometheusResource,
 		NewMetricsJobResource,
 		NewNotificationProviderResource,
 		NewPluginResource,
 		NewPluginDeploymentResource,
+		NewChainlaunchInstallSSHResource,
 	}
 }
 

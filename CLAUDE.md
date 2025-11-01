@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Terraform Provider for Chainlaunch, a Hyperledger Fabric and Hyperledger Besu blockchain management platform. The provider enables Infrastructure-as-Code management of:
+This is a Terraform Provider for Chainlaunch, a Hyperledger Fabric and Hyperledger Besu blockchain management platform.
+
+**Website**: https://chainlaunch.dev
+
+The provider enables Infrastructure-as-Code management of:
 - Organizations (Fabric MSP organizations)
 - Nodes (Fabric Peers, Orderers, CAs; Besu Nodes)
 - Networks (Fabric Channels, Besu Networks)
@@ -51,13 +55,27 @@ make test-coverage
 ```hcl
 provider_installation {
   dev_overrides {
-    "registry.terraform.io/kfsoftware/chainlaunch" = "/absolute/path/to/terraform-provider-chainlaunch"
+    "kfsoftware/chainlaunch" = "/absolute/path/to/terraform-provider-chainlaunch"
   }
   direct {}
 }
 ```
 
-3. **Run Terraform commands** - Terraform will use your local binary instead of downloading from registry
+3. **Initialize examples for testing**: Use the helper script to clean up lock files and init:
+```bash
+# From the root of the repo
+./examples/init-dev.sh fabric-network-complete
+
+# Or manually for any example
+cd examples/fabric-network-complete
+rm -f .terraform.lock.hcl
+rm -rf .terraform
+terraform init
+```
+
+4. **Run Terraform commands** - Terraform will use your local binary instead of downloading from registry
+
+**Important**: When using dev overrides, you must remove `.terraform.lock.hcl` files from example directories, as they reference the registry version and will conflict with your local build.
 
 ## Architecture Overview
 
@@ -99,6 +117,11 @@ provider_installation {
 - `resource_notification_provider.go` - Email notification providers (SMTP) for alerts
 - `resource_plugin.go` - Plugin definitions from YAML files
 - `resource_plugin_deployment.go` - Deploy plugins with parameters
+- `resource_chainlaunch_install_ssh.go` - Install Chainlaunch on remote Linux servers via SSH
+- `resource_node_invitation.go` - Generate node invitations for peer-to-peer connections
+- `resource_node_accept_invitation.go` - Accept node invitations from remote instances
+- `resource_external_nodes_sync.go` - Sync external nodes from a specific peer
+- `resource_sync_all_external_nodes.go` - Automatically sync external nodes from ALL connected peers
 
 **Data Sources** (`internal/provider/data_source_*.go`):
 - Read-only access to existing resources
@@ -672,6 +695,68 @@ The deployment resource tracks:
 - Chainlaunch auto-mounts required volumes based on parameter types
 - Deployment waits up to 60 seconds for services to reach ready state
 - API: `POST /plugins`, `PUT /plugins/{name}`, `DELETE /plugins/{name}`, `POST /plugins/{name}/deploy`, `POST /plugins/{name}/stop`
+
+### SSH Installation
+
+The provider supports installing Chainlaunch on remote Linux servers via SSH using the **`chainlaunch_install_ssh`** resource. This is particularly useful for AWS EC2, DigitalOcean, or other cloud VPS deployments.
+
+**Key Features**:
+- Automatic Chainlaunch binary download and installation
+- Systemd service creation and management
+- SSH authentication via password or private key
+- Version management (specific versions or "latest")
+- Environment variable configuration
+- Service status monitoring
+
+**Example - AWS EC2 Integration**:
+```hcl
+# Provision EC2 instance
+resource "aws_instance" "chainlaunch_server" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t3.medium"
+  key_name      = "my-key"
+}
+
+# Install Chainlaunch via SSH
+resource "chainlaunch_install_ssh" "server" {
+  host        = aws_instance.chainlaunch_server.public_ip
+  user        = "ubuntu"
+  private_key = file("~/.ssh/my-key.pem")
+
+  version   = "latest"
+  port_8100 = 8100
+
+  environment = {
+    LOG_LEVEL = "info"
+  }
+
+  depends_on = [aws_instance.chainlaunch_server]
+}
+
+# Use the installed instance
+provider "chainlaunch" {
+  url      = chainlaunch_install_ssh.server.chainlaunch_url
+  username = "admin"
+  password = "admin123"
+}
+```
+
+**Prerequisites**:
+- Target machine must have: Linux with systemd, Docker, sudo access, curl
+- SSH access configured (password or key-based)
+
+**Lifecycle**:
+- **Create**: Downloads binary, creates systemd service, starts service
+- **Read**: Checks service status and installed version
+- **Update**: Supports version upgrades by stopping service, reinstalling, and restarting
+- **Delete**: Stops and disables service, removes systemd file (keeps installation files for safety)
+
+**Important Notes**:
+- Uses `golang.org/x/crypto/ssh` for SSH connections
+- Systemd service runs as root (required for Docker access)
+- Installation files preserved on deletion for data safety
+- Service logs available via `journalctl -u chainlaunch`
+- See `examples/aws-fabric-nodes/` for complete AWS deployment example
 
 ## Testing
 

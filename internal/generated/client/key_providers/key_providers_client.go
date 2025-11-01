@@ -56,13 +56,65 @@ type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
+	GetAWSKMSStatus(params *GetAWSKMSStatusParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetAWSKMSStatusOK, error)
+
 	GetVaultStatus(params *GetVaultStatusParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetVaultStatusOK, error)
 
 	StartVault(params *StartVaultParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*StartVaultOK, error)
 
 	StopVault(params *StopVaultParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*StopVaultOK, error)
 
+	TunePKIMount(params *TunePKIMountParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*TunePKIMountOK, error)
+
+	UnsealVault(params *UnsealVaultParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UnsealVaultOK, error)
+
 	SetTransport(transport runtime.ClientTransport)
+}
+
+/*
+GetAWSKMSStatus gets a w s k m s status
+
+Get the status of an AWS KMS provider including connection status and key statistics
+*/
+func (a *Client) GetAWSKMSStatus(params *GetAWSKMSStatusParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetAWSKMSStatusOK, error) {
+	// NOTE: parameters are not validated before sending
+	if params == nil {
+		params = NewGetAWSKMSStatusParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getAWSKMSStatus",
+		Method:             "GET",
+		PathPattern:        "/key-providers/{id}/awskms/status",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetAWSKMSStatusReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+
+	// only one success response has to be checked
+	success, ok := result.(*GetAWSKMSStatusOK)
+	if ok {
+		return success, nil
+	}
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getAWSKMSStatus: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
 }
 
 /*
@@ -200,6 +252,98 @@ func (a *Client) StopVault(params *StopVaultParams, authInfo runtime.ClientAuthI
 	//
 	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for stopVault: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+TunePKIMount tunes p k i mount
+
+Configure the PKI mount TTL settings for a Vault provider
+*/
+func (a *Client) TunePKIMount(params *TunePKIMountParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*TunePKIMountOK, error) {
+	// NOTE: parameters are not validated before sending
+	if params == nil {
+		params = NewTunePKIMountParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "tunePKIMount",
+		Method:             "POST",
+		PathPattern:        "/key-providers/{id}/vault/tune-pki",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &TunePKIMountReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+
+	// only one success response has to be checked
+	success, ok := result.(*TunePKIMountOK)
+	if ok {
+		return success, nil
+	}
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for tunePKIMount: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+UnsealVault unseals vault
+
+Manually unseal a HashiCorp Vault instance
+*/
+func (a *Client) UnsealVault(params *UnsealVaultParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UnsealVaultOK, error) {
+	// NOTE: parameters are not validated before sending
+	if params == nil {
+		params = NewUnsealVaultParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "unsealVault",
+		Method:             "POST",
+		PathPattern:        "/key-providers/{id}/vault/unseal",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &UnsealVaultReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+
+	// only one success response has to be checked
+	success, ok := result.(*UnsealVaultOK)
+	if ok {
+		return success, nil
+	}
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for unsealVault: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

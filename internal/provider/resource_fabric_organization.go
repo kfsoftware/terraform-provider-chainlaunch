@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -137,6 +138,24 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// Validate that we have a valid organization ID before saving to state
+	if org.ID == 0 {
+		resp.Diagnostics.AddError(
+			"Invalid Organization Response",
+			fmt.Sprintf("Organization creation failed: API returned invalid or empty organization ID. Response body: %s", string(body)),
+		)
+		return
+	}
+
+	// Validate that MSPID matches what was requested
+	if org.MSPID != data.MSPID.ValueString() {
+		resp.Diagnostics.AddError(
+			"MSPID Mismatch",
+			fmt.Sprintf("Expected MSPID %s but got %s from API", data.MSPID.ValueString(), org.MSPID),
+		)
+		return
+	}
+
 	data.ID = types.StringValue(fmt.Sprintf("%d", org.ID))
 	data.MSPID = types.StringValue(org.MSPID)
 	if org.Description != "" {
@@ -147,6 +166,11 @@ func (r *OrganizationResource) Create(ctx context.Context, req resource.CreateRe
 	}
 	if org.UpdatedAt != "" {
 		data.UpdatedAt = types.StringValue(org.UpdatedAt)
+	}
+
+	// Only save to state if no errors occurred
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -163,6 +187,13 @@ func (r *OrganizationResource) Read(ctx context.Context, req resource.ReadReques
 
 	body, err := r.client.DoRequest("GET", fmt.Sprintf("/organizations/%s", data.ID.ValueString()), nil)
 	if err != nil {
+		// Check if the error is a NOT_FOUND error
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "not_found") || strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "404") {
+			// Organization was deleted outside of Terraform - remove from state
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read organization, got error: %s", err))
 		return
 	}
@@ -170,6 +201,13 @@ func (r *OrganizationResource) Read(ctx context.Context, req resource.ReadReques
 	var org Organization
 	if err := json.Unmarshal(body, &org); err != nil {
 		resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse organization response, got error: %s", err))
+		return
+	}
+
+	// Validate that we got a valid organization
+	if org.ID == 0 {
+		// Invalid response - organization might have been deleted
+		resp.State.RemoveResource(ctx)
 		return
 	}
 

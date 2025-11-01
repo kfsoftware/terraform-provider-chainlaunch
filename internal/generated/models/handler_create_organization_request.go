@@ -19,6 +19,12 @@ import (
 // swagger:model handler.CreateOrganizationRequest
 type HandlerCreateOrganizationRequest struct {
 
+	// Certificate validity configuration (Go duration format)
+	CaCertValidFor string `json:"caCertValidFor,omitempty"`
+
+	// Validity for admin/client/peer certificates (e.g., "8760h" for 1 year). Default: 8760h (1 year)
+	CertValidFor string `json:"certValidFor,omitempty"`
+
 	// CA certificate properties
 	Country []string `json:"country"`
 

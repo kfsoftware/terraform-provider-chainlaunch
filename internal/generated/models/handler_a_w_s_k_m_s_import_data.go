@@ -19,24 +19,6 @@ import (
 // swagger:model handler.AWSKMSImportData
 type HandlerAWSKMSImportData struct {
 
-	// Optional: Admin certificates and KMS key IDs
-	AdminSignCert string `json:"adminSignCert,omitempty"`
-
-	// admin sign key Id
-	AdminSignKeyID string `json:"adminSignKeyId,omitempty"`
-
-	// admin Tls cert
-	AdminTLSCert string `json:"adminTlsCert,omitempty"`
-
-	// admin Tls key Id
-	AdminTLSKeyID string `json:"adminTlsKeyId,omitempty"`
-
-	// Optional: Client certificates and KMS key IDs
-	ClientSignCert string `json:"clientSignCert,omitempty"`
-
-	// client sign key Id
-	ClientSignKeyID string `json:"clientSignKeyId,omitempty"`
-
 	// Required: CA certificates (stored in ChainLaunch, keys tracked in KMS)
 	// Required: true
 	SignCaCert *string `json:"signCaCert"`
