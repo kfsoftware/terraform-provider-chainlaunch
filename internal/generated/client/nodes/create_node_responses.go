@@ -196,10 +196,10 @@ func NewCreateNodeInternalServerError() *CreateNodeInternalServerError {
 /*
 CreateNodeInternalServerError describes a response with status code 500, with default header values.
 
-Internal server error
+Node creation failed (may include partial success details with node_id and stage)
 */
 type CreateNodeInternalServerError struct {
-	Payload *models.ResponseErrorResponse
+	Payload *models.ResponseNodeCreationErrorResponse
 }
 
 // IsSuccess returns true when this create node internal server error response has a 2xx status code
@@ -242,13 +242,13 @@ func (o *CreateNodeInternalServerError) String() string {
 	return fmt.Sprintf("[POST /nodes][%d] createNodeInternalServerError %s", 500, payload)
 }
 
-func (o *CreateNodeInternalServerError) GetPayload() *models.ResponseErrorResponse {
+func (o *CreateNodeInternalServerError) GetPayload() *models.ResponseNodeCreationErrorResponse {
 	return o.Payload
 }
 
 func (o *CreateNodeInternalServerError) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(models.ResponseErrorResponse)
+	o.Payload = new(models.ResponseNodeCreationErrorResponse)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {

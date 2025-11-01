@@ -68,6 +68,12 @@ type ListFabricNetworksParams struct {
 	*/
 	Limit *int64
 
+	/* Name.
+
+	   Filter by network name (partial match)
+	*/
+	Name *string
+
 	/* Offset.
 
 	   Number of items to skip (default: 0)
@@ -138,6 +144,17 @@ func (o *ListFabricNetworksParams) SetLimit(limit *int64) {
 	o.Limit = limit
 }
 
+// WithName adds the name to the list fabric networks params
+func (o *ListFabricNetworksParams) WithName(name *string) *ListFabricNetworksParams {
+	o.SetName(name)
+	return o
+}
+
+// SetName adds the name to the list fabric networks params
+func (o *ListFabricNetworksParams) SetName(name *string) {
+	o.Name = name
+}
+
 // WithOffset adds the offset to the list fabric networks params
 func (o *ListFabricNetworksParams) WithOffset(offset *int64) *ListFabricNetworksParams {
 	o.SetOffset(offset)
@@ -169,6 +186,23 @@ func (o *ListFabricNetworksParams) WriteToRequest(r runtime.ClientRequest, reg s
 		if qLimit != "" {
 
 			if err := r.SetQueryParam("limit", qLimit); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.Name != nil {
+
+		// query param name
+		var qrName string
+
+		if o.Name != nil {
+			qrName = *o.Name
+		}
+		qName := qrName
+		if qName != "" {
+
+			if err := r.SetQueryParam("name", qName); err != nil {
 				return err
 			}
 		}

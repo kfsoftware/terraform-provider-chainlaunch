@@ -82,6 +82,8 @@ func WithAcceptApplicationxPemFile(r *runtime.ClientOperation) {
 type ClientService interface {
 	CreateFabricOrganization(params *CreateFabricOrganizationParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateFabricOrganizationCreated, error)
 
+	CreateOrganizationIdentity(params *CreateOrganizationIdentityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateOrganizationIdentityCreated, error)
+
 	CreateOrganizationKey(params *CreateOrganizationKeyParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateOrganizationKeyCreated, error)
 
 	DeleteFabricOrganization(params *DeleteFabricOrganizationParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DeleteFabricOrganizationNoContent, error)
@@ -97,6 +99,8 @@ type ClientService interface {
 	GetOrganizationCRL(params *GetOrganizationCRLParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetOrganizationCRLOK, error)
 
 	GetOrganizationKey(params *GetOrganizationKeyParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetOrganizationKeyOK, error)
+
+	GetOrganizationKeys(params *GetOrganizationKeysParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetOrganizationKeysOK, error)
 
 	GetRevokedCertificates(params *GetRevokedCertificatesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetRevokedCertificatesOK, error)
 
@@ -160,6 +164,52 @@ func (a *Client) CreateFabricOrganization(params *CreateFabricOrganizationParams
 	//
 	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for createFabricOrganization: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+CreateOrganizationIdentity creates a new identity for an organization
+
+Create a new identity (admin, client, or peer) for a Fabric organization
+*/
+func (a *Client) CreateOrganizationIdentity(params *CreateOrganizationIdentityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateOrganizationIdentityCreated, error) {
+	// NOTE: parameters are not validated before sending
+	if params == nil {
+		params = NewCreateOrganizationIdentityParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "createOrganizationIdentity",
+		Method:             "POST",
+		PathPattern:        "/organizations/{id}/identities",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &CreateOrganizationIdentityReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+
+	// only one success response has to be checked
+	success, ok := result.(*CreateOrganizationIdentityCreated)
+	if ok {
+		return success, nil
+	}
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for createOrganizationIdentity: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -532,6 +582,52 @@ func (a *Client) GetOrganizationKey(params *GetOrganizationKeyParams, authInfo r
 }
 
 /*
+GetOrganizationKeys gets all identities keys for an organization
+
+Get all identities (keys) created for an organization, grouped by identity type and key purpose
+*/
+func (a *Client) GetOrganizationKeys(params *GetOrganizationKeysParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetOrganizationKeysOK, error) {
+	// NOTE: parameters are not validated before sending
+	if params == nil {
+		params = NewGetOrganizationKeysParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getOrganizationKeys",
+		Method:             "GET",
+		PathPattern:        "/organizations/{id}/identities",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetOrganizationKeysReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+
+	// only one success response has to be checked
+	success, ok := result.(*GetOrganizationKeysOK)
+	if ok {
+		return success, nil
+	}
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getOrganizationKeys: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
 GetRevokedCertificates gets organization s revoked certificates
 
 Get all revoked certificates for the organization
@@ -672,7 +768,7 @@ func (a *Client) ListFabricOrganizations(params *ListFabricOrganizationsParams, 
 /*
 ListOrganizationKeys lists all keys for an organization
 
-Get all keys associated with an organization
+Get all keys associated with an organization from the organization_keys table
 */
 func (a *Client) ListOrganizationKeys(params *ListOrganizationKeysParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOrganizationKeysOK, error) {
 	// NOTE: parameters are not validated before sending

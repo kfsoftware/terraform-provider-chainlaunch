@@ -183,11 +183,11 @@ type HTTPCreateBesuNetworkRequestConfig struct {
 	// @Description Optional gas limit value
 	GasLimit string `json:"gasLimit,omitempty"`
 
-	// @Description List of initial validator key IDs
+	// @Description List of initial validator key IDs (minimum 4 required for QBFT consensus and Byzantine Fault Tolerance)
 	// @Required
-	// @MinItems 1
+	// @MinItems 4
 	// Required: true
-	// Min Items: 1
+	// Min Items: 4
 	InitialValidatorsKeyIds []int64 `json:"initialValidatorsKeyIds"`
 
 	// @Description Optional mix hash value
@@ -351,7 +351,7 @@ func (m *HTTPCreateBesuNetworkRequestConfig) validateInitialValidatorsKeyIds(for
 
 	iInitialValidatorsKeyIdsSize := int64(len(m.InitialValidatorsKeyIds))
 
-	if err := validate.MinItems("config"+"."+"initialValidatorsKeyIds", "body", iInitialValidatorsKeyIdsSize, 1); err != nil {
+	if err := validate.MinItems("config"+"."+"initialValidatorsKeyIds", "body", iInitialValidatorsKeyIdsSize, 4); err != nil {
 		return err
 	}
 

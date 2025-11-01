@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -301,61 +300,60 @@ func (r *FabricPeerResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	body, err := r.client.DoRequest("POST", "/nodes", createReq)
-
-	// Parse response - even if there's an error, the response might contain node data
 	var nodeResp NodeResponse
-	var errorResponse struct {
-		Message string `json:"message"`
-		Data    struct {
-			Node   *NodeResponse `json:"node"`
-			NodeID int64         `json:"node_id"`
-			Stage  string        `json:"stage"`
-		} `json:"data"`
-	}
 
-	// Try to parse as error response first
 	if err != nil {
-		// Extract the JSON from the error message
-		errMsg := err.Error()
-		jsonStart := strings.Index(errMsg, "{")
-		if jsonStart >= 0 {
-			jsonData := errMsg[jsonStart:]
-			if unmarshalErr := json.Unmarshal([]byte(jsonData), &errorResponse); unmarshalErr == nil {
-				// If error response contains node data, use it
-				if errorResponse.Data.Node != nil && errorResponse.Data.Node.ID > 0 {
-					nodeResp = *errorResponse.Data.Node
-					// Save to state even though there was an error
-					data.ID = types.StringValue(fmt.Sprintf("%d", nodeResp.ID))
-					data.Name = types.StringValue(data.Name.ValueString())
-					if nodeResp.Status != "" {
-						data.Status = types.StringValue(nodeResp.Status)
-					}
-					if nodeResp.CreatedAt != "" {
-						data.CreatedAt = types.StringValue(nodeResp.CreatedAt)
-					}
-					if nodeResp.UpdatedAt != "" {
-						data.UpdatedAt = types.StringValue(nodeResp.UpdatedAt)
-					}
-
-					// Save to state
-					resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-
-					// Add a warning instead of error so state is saved
-					resp.Diagnostics.AddWarning(
-						"Peer Created with Errors",
-						fmt.Sprintf("Peer was created (ID: %d) but failed during startup: %s. The peer is in state and can be updated or deleted.", nodeResp.ID, errorResponse.Message),
-					)
-					return
-				}
-			}
+		// Try to parse as NodeCreationErrorResponse to check if node was created in DB
+		var errResp struct {
+			Error   string `json:"error"`
+			Message string `json:"message"`
+			Details struct {
+				NodeCreated bool        `json:"node_created"`
+				NodeID      int64       `json:"node_id"`
+				Stage       string      `json:"stage"`
+				Node        interface{} `json:"node"` // Contains the actual node data
+			} `json:"details"`
 		}
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create fabric peer, got error: %s", err))
-		return
-	}
 
-	if err := json.Unmarshal(body, &nodeResp); err != nil {
-		resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse peer response, got error: %s", err))
-		return
+		// If we can parse the error response and node was NOT created, don't save to state
+		if parseErr := json.Unmarshal(body, &errResp); parseErr == nil && errResp.Details.Stage != "" {
+			if !errResp.Details.NodeCreated {
+				// Node was NOT created in database - don't save to state
+				resp.Diagnostics.AddError(
+					"Peer Creation Failed",
+					fmt.Sprintf("Peer creation failed at stage '%s': %s\nPeer was not created in the database and will not be saved to state.",
+						errResp.Details.Stage, errResp.Message),
+				)
+				return
+			}
+			// Node WAS created in database but deployment failed - fetch full node details from API
+			resp.Diagnostics.AddWarning(
+				"Peer Partially Created",
+				fmt.Sprintf("Peer was created in database (ID: %d) but deployment failed at stage '%s': %s\nThe peer will be saved to state so you can manage or delete it.",
+					errResp.Details.NodeID, errResp.Details.Stage, errResp.Message),
+			)
+
+			// Fetch the full node details from the API
+			nodeBody, getErr := r.client.DoRequest("GET", fmt.Sprintf("/nodes/%d", errResp.Details.NodeID), nil)
+			if getErr != nil {
+				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Peer was created (ID: %d) but unable to fetch node details: %s", errResp.Details.NodeID, getErr))
+				return
+			}
+			if unmarshalErr := json.Unmarshal(nodeBody, &nodeResp); unmarshalErr != nil {
+				resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse peer details: %s\nResponse body: %s", unmarshalErr, string(nodeBody)))
+				return
+			}
+		} else {
+			// Generic error without node creation details
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create fabric peer, got error: %s", err))
+			return
+		}
+	} else {
+		// Success case - parse the response body as NodeResponse
+		if err := json.Unmarshal(body, &nodeResp); err != nil {
+			resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse peer response, got error: %s\nResponse body: %s", err, string(body)))
+			return
+		}
 	}
 
 	// Set state from response

@@ -41,6 +41,9 @@ type HTTPUpdateBackupTargetRequest struct {
 	// region
 	Region string `json:"region,omitempty"`
 
+	// restic password
+	ResticPassword string `json:"resticPassword,omitempty"`
+
 	// secret key
 	SecretKey string `json:"secretKey,omitempty"`
 
