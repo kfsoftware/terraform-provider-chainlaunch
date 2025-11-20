@@ -181,8 +181,10 @@ func (r *MetricsPrometheusResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	// Preserve computed fields from state
+	// Preserve all computed fields from state
 	data.ID = state.ID
+	data.Status = state.Status
+	data.StartedAt = state.StartedAt
 
 	// Prometheus requires recreation for config changes
 	resp.Diagnostics.AddError(
@@ -228,10 +230,16 @@ func (r *MetricsPrometheusResource) readStatus(ctx context.Context, data *Metric
 
 	if statusStr, ok := status["status"].(string); ok {
 		data.Status = types.StringValue(statusStr)
+	} else {
+		// Set to empty string if not provided
+		data.Status = types.StringValue("")
 	}
 
 	if startedAt, ok := status["started_at"].(string); ok {
 		data.StartedAt = types.StringValue(startedAt)
+	} else {
+		// Set to empty string if not provided (e.g., when Prometheus is starting)
+		data.StartedAt = types.StringValue("")
 	}
 
 	if deploymentMode, ok := status["deployment_mode"].(string); ok {

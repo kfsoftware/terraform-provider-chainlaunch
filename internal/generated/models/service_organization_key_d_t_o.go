@@ -47,11 +47,17 @@ type ServiceOrganizationKeyDTO struct {
 	// key status
 	KeyStatus string `json:"keyStatus,omitempty"`
 
+	// kms key Id
+	KmsKeyID string `json:"kmsKeyId,omitempty"`
+
 	// organization Id
 	OrganizationID int64 `json:"organizationId,omitempty"`
 
 	// public key
 	PublicKey string `json:"publicKey,omitempty"`
+
+	// vault path
+	VaultPath string `json:"vaultPath,omitempty"`
 }
 
 // Validate validates this service organization key d t o

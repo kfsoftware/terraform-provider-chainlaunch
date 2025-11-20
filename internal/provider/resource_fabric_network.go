@@ -66,8 +66,9 @@ type FabricNetworkResourceModel struct {
 }
 
 type OrganizationConfigModel struct {
-	ID      types.Int64   `tfsdk:"id"`
-	NodeIDs []types.Int64 `tfsdk:"node_ids"`
+	ID              types.Int64    `tfsdk:"id"`
+	NodeIDs         []types.Int64  `tfsdk:"node_ids"`
+	ExternalNodeIDs []types.String `tfsdk:"external_node_ids"`
 }
 
 type ExternalOrgConfigModel struct {
@@ -183,6 +184,11 @@ func (r *FabricNetworkResource) Schema(ctx context.Context, req resource.SchemaR
 							ElementType: types.Int64Type,
 							Description: "List of peer node IDs for this organization.",
 						},
+						"external_node_ids": schema.ListAttribute{
+							Optional:    true,
+							ElementType: types.StringType,
+							Description: "List of external peer node IDs from connected instances (from external_nodes data source).",
+						},
 					},
 				},
 			},
@@ -199,6 +205,11 @@ func (r *FabricNetworkResource) Schema(ctx context.Context, req resource.SchemaR
 							Required:    true,
 							ElementType: types.Int64Type,
 							Description: "List of orderer node IDs (consenters) for this organization.",
+						},
+						"external_node_ids": schema.ListAttribute{
+							Optional:    true,
+							ElementType: types.StringType,
+							Description: "List of external orderer node IDs from connected instances (from external_nodes data source).",
 						},
 					},
 				},
@@ -893,9 +904,19 @@ func (r *FabricNetworkResource) buildFabricNetworkConfig(ctx context.Context, da
 			for j, nid := range org.NodeIDs {
 				nodeIDs[j] = nid.ValueInt64()
 			}
+
+			var externalNodeIDs []string
+			if len(org.ExternalNodeIDs) > 0 {
+				externalNodeIDs = make([]string, len(org.ExternalNodeIDs))
+				for j, eid := range org.ExternalNodeIDs {
+					externalNodeIDs[j] = eid.ValueString()
+				}
+			}
+
 			config.PeerOrganizations[i] = OrganizationConfig{
-				ID:      org.ID.ValueInt64(),
-				NodeIDs: nodeIDs,
+				ID:              org.ID.ValueInt64(),
+				NodeIDs:         nodeIDs,
+				ExternalNodeIDs: externalNodeIDs,
 			}
 		}
 	}
@@ -907,9 +928,19 @@ func (r *FabricNetworkResource) buildFabricNetworkConfig(ctx context.Context, da
 			for j, nid := range org.NodeIDs {
 				nodeIDs[j] = nid.ValueInt64()
 			}
+
+			var externalNodeIDs []string
+			if len(org.ExternalNodeIDs) > 0 {
+				externalNodeIDs = make([]string, len(org.ExternalNodeIDs))
+				for j, eid := range org.ExternalNodeIDs {
+					externalNodeIDs[j] = eid.ValueString()
+				}
+			}
+
 			config.OrdererOrganizations[i] = OrganizationConfig{
-				ID:      org.ID.ValueInt64(),
-				NodeIDs: nodeIDs,
+				ID:              org.ID.ValueInt64(),
+				NodeIDs:         nodeIDs,
+				ExternalNodeIDs: externalNodeIDs,
 			}
 		}
 	}

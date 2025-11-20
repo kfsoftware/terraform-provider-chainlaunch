@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # LocalStack - Emulates AWS services locally
+  localstack:
+    image: localstack/localstack:latest
+    container_name: chainlaunch-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      # Enable only KMS service to reduce startup time
+      - SERVICES=kms
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "${TMPDIR:-/tmp}/localstack:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - fabric-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Note: Chainlaunch instances (Node 1 and Node 2) should be running separately
+  # They can be running locally, in Docker containers, or on remote servers
+  # Configure their URLs in variables.tf:
+  # - node1_url: http://localhost:8100
+  # - node2_url: http://localhost:8101
+
+networks:
+  fabric-network:
+    driver: bridge

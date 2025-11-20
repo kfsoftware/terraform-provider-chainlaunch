@@ -122,6 +122,7 @@ terraform init
 - `resource_node_accept_invitation.go` - Accept node invitations from remote instances
 - `resource_external_nodes_sync.go` - Sync external nodes from a specific peer
 - `resource_sync_all_external_nodes.go` - Automatically sync external nodes from ALL connected peers
+- `resource_network_share.go` - Share Fabric or Besu networks with connected peer nodes
 
 **Data Sources** (`internal/provider/data_source_*.go`):
 - Read-only access to existing resources
@@ -136,6 +137,11 @@ terraform init
 - `data_source_besu_node.go` - Query Besu nodes by ID
 - `data_source_fabric_chaincode.go` - Query chaincode by name and network
 - `data_source_plugin.go` - Query plugin information and deployment status
+- `data_source_external_nodes.go` - Query ALL external nodes (peers, orderers, Besu) in a single API call
+- `data_source_external_fabric_peers.go` - Query external Fabric peers only
+- `data_source_external_fabric_orderers.go` - Query external Fabric orderers only
+- `data_source_external_fabric_organizations.go` - Query external Fabric organizations only
+- `data_source_external_besu_nodes.go` - Query external Besu nodes only
 
 ### Key Implementation Patterns
 
@@ -758,6 +764,190 @@ provider "chainlaunch" {
 - Service logs available via `journalctl -u chainlaunch`
 - See `examples/aws-fabric-nodes/` for complete AWS deployment example
 
+### Network Sharing
+
+The provider supports sharing Fabric and Besu networks with connected Chainlaunch peer nodes using the **`chainlaunch_network_share`** resource. This is a **Pro-only feature** that enables multi-instance collaboration.
+
+**Use Cases**:
+- Share Fabric channel configuration with partner organizations
+- Distribute Besu genesis configuration to consortium members
+- Enable cross-instance network participation
+
+**Prerequisites**:
+- Pro features enabled on both sharing and receiving instances
+- Peer nodes connected via `chainlaunch_node_invitation` and `chainlaunch_node_accept_invitation`
+- Network created locally (Fabric or Besu)
+
+**Resource** (`chainlaunch_network_share`):
+- Shares network configuration (genesis block, channel config) with peer nodes
+- Required fields: `network_id`, `network_type` ("fabric" or "besu"), `recipients` (list of peer node connection IDs)
+- Optional: `metadata` (key-value pairs for additional information)
+- Computed: `status`, `shared_by`, `shared_by_node`, `created_at`
+- API: `POST /pro/sharing/network` (Fabric), `POST /pro/sharing/besu-network` (Besu)
+
+**Workflow**:
+```
+Instance A: Create Network → Share with Peer Node IDs →
+Instance B: Receive Share → Accept/Reject → Import Network
+```
+
+**Example - Share Fabric Network**:
+```hcl
+# Create network locally
+resource "chainlaunch_fabric_network" "mychannel" {
+  name = "shared-channel"
+  # ... configuration
+}
+
+# Share with connected peers
+resource "chainlaunch_network_share" "share_with_partners" {
+  network_id   = chainlaunch_fabric_network.mychannel.id
+  network_type = "fabric"
+
+  # Connection IDs of peer Chainlaunch instances
+  recipients = [
+    "2",  # Org2's instance
+    "3",  # Org3's instance
+  ]
+
+  metadata = {
+    purpose = "supply-chain-collaboration"
+    version = "1.0"
+  }
+}
+```
+
+**Example - Share Besu Network**:
+```hcl
+resource "chainlaunch_besu_network" "consortium" {
+  name         = "besu-consortium"
+  chain_id     = 1337
+  consensus    = "qbft"
+  # ... configuration
+}
+
+resource "chainlaunch_network_share" "share_besu" {
+  network_id   = chainlaunch_besu_network.consortium.id
+  network_type = "besu"
+  recipients   = ["4", "5"]  # Partner connection IDs
+}
+```
+
+**Finding Connection IDs**:
+- Via UI: Pro → Connections
+- Via API: `GET /node/connected-peers`
+- From invitation acceptance
+
+**Lifecycle**:
+- **Create**: Sends network config to recipients; recipients receive notification
+- **Update**: Changing recipients re-shares; `network_id`/`network_type` changes require replacement
+- **Delete**: Removes from Terraform state; does NOT revoke share on recipient's end
+
+**Important Notes**:
+- Recipients accept/reject shares via Pro UI or API (`POST /pro/shared-networks/{shareId}/accept`)
+- Once accepted, recipients can join nodes to the shared network
+- Network shares are ephemeral - once sent, they're on the recipient's end
+- Both instances must have Pro licensing enabled
+- Connection IDs are different from node IDs - they're assigned when accepting invitations
+- See `examples/network-share/` for complete multi-instance example
+
+### External Nodes Query
+
+The provider includes a comprehensive data source to query all external nodes (Fabric peers, orderers, and Besu nodes) that have been synced from connected Chainlaunch instances.
+
+**Data Source** (`chainlaunch_external_nodes`):
+- Retrieves all external node types in a single API call
+- More efficient than using separate data sources for each node type
+- Returns: `fabric_peers`, `fabric_orderers`, `besu_nodes` arrays
+- API: `GET /external-nodes`
+
+**Use After Syncing**:
+Always use this data source after running `chainlaunch_sync_all_external_nodes` or `chainlaunch_external_nodes_sync`:
+
+```hcl
+# Sync external nodes from all connected peers
+resource "chainlaunch_sync_all_external_nodes" "sync" {}
+
+# Query all external nodes
+data "chainlaunch_external_nodes" "all" {
+  depends_on = [chainlaunch_sync_all_external_nodes.sync]
+}
+
+# Access node data
+output "all_peers" {
+  value = data.chainlaunch_external_nodes.all.fabric_peers
+}
+```
+
+**Node Information Returned**:
+
+*Fabric Peers*:
+- `id`, `external_node_id`, `name`, `msp_id`
+- `external_endpoint` - Address (e.g., "peer0.org1.example.com:7051")
+- `version` - Fabric version
+- `sign_certificate` - PEM-encoded signing certificate
+- `tls_certificate` - PEM-encoded TLS certificate
+
+*Fabric Orderers*:
+- Same fields as peers
+- `external_endpoint` - Address (e.g., "orderer0.org1.example.com:7050")
+
+*Besu Nodes*:
+- `id`, `external_node_id`, `name`, `version`
+- `enode_url` - Enode URL for P2P connections
+- `p2p_host`, `p2p_port` - P2P configuration
+- `metrics_enabled`, `metrics_port` - Prometheus metrics config
+
+**Common Patterns**:
+
+*Filter by MSP ID*:
+```hcl
+locals {
+  org1_peers = [
+    for peer in data.chainlaunch_external_nodes.all.fabric_peers :
+    peer if peer.msp_id == "Org1MSP"
+  ]
+}
+```
+
+*Get all peer endpoints*:
+```hcl
+locals {
+  peer_endpoints = [
+    for peer in data.chainlaunch_external_nodes.all.fabric_peers :
+    peer.external_endpoint
+  ]
+}
+```
+
+*Count nodes by organization*:
+```hcl
+output "nodes_by_org" {
+  value = {
+    for msp_id in distinct([
+      for peer in data.chainlaunch_external_nodes.all.fabric_peers : peer.msp_id
+    ]) : msp_id => length([
+      for peer in data.chainlaunch_external_nodes.all.fabric_peers :
+      peer if peer.msp_id == msp_id
+    ])
+  }
+}
+```
+
+**Benefits vs Individual Data Sources**:
+- ✅ Single API call (faster)
+- ✅ Consistent data snapshot (all nodes at same point in time)
+- ✅ Simpler configuration
+- ✅ Easier to maintain
+
+**Individual Data Sources** (legacy, still available):
+- `chainlaunch_external_fabric_peers` - Fabric peers only
+- `chainlaunch_external_fabric_orderers` - Fabric orderers only
+- `chainlaunch_external_fabric_organizations` - Fabric organizations only
+- `chainlaunch_external_besu_nodes` - Besu nodes only
+
+Use the comprehensive `chainlaunch_external_nodes` data source for new implementations. See `examples/external-nodes/` for complete examples.
+
 ## Testing
 
 ### Test Organization
@@ -808,6 +998,8 @@ Examples are located in `examples/` and demonstrate:
 - `plugin-definition/` - Register a plugin from YAML specification (Part 1 of plugin workflow)
 - `plugin-deployment/` - Deploy a registered plugin with parameters (Part 2 of plugin workflow)
 - `plugin-hlf-api/` - Complete end-to-end: register + deploy Hyperledger Fabric REST API plugin
+- `network-share/` - Share Fabric or Besu networks with connected peer nodes (Pro-only feature)
+- `external-nodes/` - Query all external nodes (peers, orderers, Besu) from connected instances in a single API call
 
 Each example has a comprehensive README with configuration details and troubleshooting.
 
