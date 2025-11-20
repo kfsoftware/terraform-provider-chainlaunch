@@ -13,6 +13,7 @@ resource_categories:
   - name: Fabric
     resources:
       - chainlaunch_fabric_organization
+      - chainlaunch_fabric_organization_import
       - chainlaunch_fabric_peer
       - chainlaunch_fabric_orderer
       - chainlaunch_fabric_network
@@ -50,6 +51,9 @@ resource_categories:
       - chainlaunch_node_invitation
       - chainlaunch_node_accept_invitation
       - chainlaunch_external_nodes_sync
+      - chainlaunch_sync_all_external_nodes
+      - chainlaunch_network_share
+      - chainlaunch_install_ssh
   - name: Legacy
     resources:
       - chainlaunch_node
@@ -69,13 +73,16 @@ data_source_categories:
       - chainlaunch_external_fabric_orderers
   - name: Besu
     data_sources:
-      - chainlaunch_besu_network
       - chainlaunch_besu_node
       - chainlaunch_external_besu_nodes
   - name: Keys & Providers
     data_sources:
+      - chainlaunch_key
       - chainlaunch_key_provider
       - chainlaunch_key_providers
+  - name: External Nodes
+    data_sources:
+      - chainlaunch_external_nodes
   - name: Plugins
     data_sources:
       - chainlaunch_plugin
