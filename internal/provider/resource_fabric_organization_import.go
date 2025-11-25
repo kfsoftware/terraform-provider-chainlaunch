@@ -29,31 +29,31 @@ type FabricOrganizationImportResource struct {
 
 // FabricOrganizationImportResourceModel describes the resource data model.
 type FabricOrganizationImportResourceModel struct {
-	ID                 types.String `tfsdk:"id"`
-	MSPID              types.String `tfsdk:"msp_id"`
-	Name               types.String `tfsdk:"name"`
-	Description        types.String `tfsdk:"description"`
-	ProviderID         types.Int64  `tfsdk:"provider_id"`
-	SourceType         types.String `tfsdk:"source_type"`
-	RawImport          []RawImportModel       `tfsdk:"raw_import"`
-	VaultImport        []VaultImportModel     `tfsdk:"vault_import"`
-	AWSKmsImport       []AWSKmsImportModel    `tfsdk:"aws_kms_import"`
-	AdminSignKeyID     types.Int64  `tfsdk:"admin_sign_key_id"`
-	AdminTlsKeyID      types.Int64  `tfsdk:"admin_tls_key_id"`
-	ClientSignKeyID    types.Int64  `tfsdk:"client_sign_key_id"`
-	SignCertificate    types.String `tfsdk:"sign_certificate"`
-	SignPublicKey      types.String `tfsdk:"sign_public_key"`
-	TLSCertificate     types.String `tfsdk:"tls_certificate"`
-	TLSPublicKey       types.String `tfsdk:"tls_public_key"`
-	CreatedAt          types.String `tfsdk:"created_at"`
-	UpdatedAt          types.String `tfsdk:"updated_at"`
+	ID              types.String        `tfsdk:"id"`
+	MSPID           types.String        `tfsdk:"msp_id"`
+	Name            types.String        `tfsdk:"name"`
+	Description     types.String        `tfsdk:"description"`
+	ProviderID      types.Int64         `tfsdk:"provider_id"`
+	SourceType      types.String        `tfsdk:"source_type"`
+	RawImport       []RawImportModel    `tfsdk:"raw_import"`
+	VaultImport     []VaultImportModel  `tfsdk:"vault_import"`
+	AWSKmsImport    []AWSKmsImportModel `tfsdk:"aws_kms_import"`
+	AdminSignKeyID  types.Int64         `tfsdk:"admin_sign_key_id"`
+	AdminTlsKeyID   types.Int64         `tfsdk:"admin_tls_key_id"`
+	ClientSignKeyID types.Int64         `tfsdk:"client_sign_key_id"`
+	SignCertificate types.String        `tfsdk:"sign_certificate"`
+	SignPublicKey   types.String        `tfsdk:"sign_public_key"`
+	TLSCertificate  types.String        `tfsdk:"tls_certificate"`
+	TLSPublicKey    types.String        `tfsdk:"tls_public_key"`
+	CreatedAt       types.String        `tfsdk:"created_at"`
+	UpdatedAt       types.String        `tfsdk:"updated_at"`
 }
 
 type RawImportModel struct {
-	SignCaCert        types.String `tfsdk:"sign_ca_cert"`
-	SignCaPrivateKey  types.String `tfsdk:"sign_ca_private_key"`
-	TLSCaCert         types.String `tfsdk:"tls_ca_cert"`
-	TLSCaPrivateKey   types.String `tfsdk:"tls_ca_private_key"`
+	SignCaCert       types.String `tfsdk:"sign_ca_cert"`
+	SignCaPrivateKey types.String `tfsdk:"sign_ca_private_key"`
+	TLSCaCert        types.String `tfsdk:"tls_ca_cert"`
+	TLSCaPrivateKey  types.String `tfsdk:"tls_ca_private_key"`
 }
 
 type VaultImportModel struct {
@@ -62,10 +62,10 @@ type VaultImportModel struct {
 }
 
 type AWSKmsImportModel struct {
-	SignCaCert   types.String `tfsdk:"sign_ca_cert"`
-	SignCaKeyId  types.String `tfsdk:"sign_ca_key_id"`
-	TLSCaCert    types.String `tfsdk:"tls_ca_cert"`
-	TLSCaKeyId   types.String `tfsdk:"tls_ca_key_id"`
+	SignCaCert  types.String `tfsdk:"sign_ca_cert"`
+	SignCaKeyId types.String `tfsdk:"sign_ca_key_id"`
+	TLSCaCert   types.String `tfsdk:"tls_ca_cert"`
+	TLSCaKeyId  types.String `tfsdk:"tls_ca_key_id"`
 }
 
 func (r *FabricOrganizationImportResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

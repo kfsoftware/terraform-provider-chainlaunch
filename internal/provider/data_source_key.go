@@ -24,32 +24,32 @@ type KeyDataSource struct {
 
 // KeyDataSourceModel describes the data source data model.
 type KeyDataSourceModel struct {
-	ID                  types.String `tfsdk:"id"`
-	Name                types.String `tfsdk:"name"`
-	Algorithm           types.String `tfsdk:"algorithm"`
-	Curve               types.String `tfsdk:"curve"`
-	KeySize             types.Int64  `tfsdk:"key_size"`
-	ProviderID          types.Int64  `tfsdk:"provider_id"`
-	IsCA                types.Bool   `tfsdk:"is_ca"`
-	Description         types.String `tfsdk:"description"`
-	PublicKey           types.String `tfsdk:"public_key"`
-	Certificate         types.String `tfsdk:"certificate"`
-	CreatedAt           types.String `tfsdk:"created_at"`
-	CanUseInNodes       types.Bool   `tfsdk:"can_use_in_nodes"`
-	EthereumAddress     types.String `tfsdk:"ethereum_address"`
-	ExpiresAt           types.String `tfsdk:"expires_at"`
-	Format              types.String `tfsdk:"format"`
-	GeneratedLocally    types.Bool   `tfsdk:"generated_locally"`
-	ImportedToProvider  types.Bool   `tfsdk:"imported_to_provider"`
-	IsExportable        types.Bool   `tfsdk:"is_exportable"`
-	KmsKeyId            types.String `tfsdk:"kms_key_id"`
-	LastRotatedAt       types.String `tfsdk:"last_rotated_at"`
-	Sha1Fingerprint     types.String `tfsdk:"sha1_fingerprint"`
-	Sha256Fingerprint   types.String `tfsdk:"sha256_fingerprint"`
-	SigningKeyID        types.Int64  `tfsdk:"signing_key_id"`
-	Status              types.String `tfsdk:"status"`
-	VaultPath           types.String `tfsdk:"vault_path"`
-	WasExported         types.Bool   `tfsdk:"was_exported"`
+	ID                 types.String `tfsdk:"id"`
+	Name               types.String `tfsdk:"name"`
+	Algorithm          types.String `tfsdk:"algorithm"`
+	Curve              types.String `tfsdk:"curve"`
+	KeySize            types.Int64  `tfsdk:"key_size"`
+	ProviderID         types.Int64  `tfsdk:"provider_id"`
+	IsCA               types.Bool   `tfsdk:"is_ca"`
+	Description        types.String `tfsdk:"description"`
+	PublicKey          types.String `tfsdk:"public_key"`
+	Certificate        types.String `tfsdk:"certificate"`
+	CreatedAt          types.String `tfsdk:"created_at"`
+	CanUseInNodes      types.Bool   `tfsdk:"can_use_in_nodes"`
+	EthereumAddress    types.String `tfsdk:"ethereum_address"`
+	ExpiresAt          types.String `tfsdk:"expires_at"`
+	Format             types.String `tfsdk:"format"`
+	GeneratedLocally   types.Bool   `tfsdk:"generated_locally"`
+	ImportedToProvider types.Bool   `tfsdk:"imported_to_provider"`
+	IsExportable       types.Bool   `tfsdk:"is_exportable"`
+	KmsKeyId           types.String `tfsdk:"kms_key_id"`
+	LastRotatedAt      types.String `tfsdk:"last_rotated_at"`
+	Sha1Fingerprint    types.String `tfsdk:"sha1_fingerprint"`
+	Sha256Fingerprint  types.String `tfsdk:"sha256_fingerprint"`
+	SigningKeyID       types.Int64  `tfsdk:"signing_key_id"`
+	Status             types.String `tfsdk:"status"`
+	VaultPath          types.String `tfsdk:"vault_path"`
+	WasExported        types.Bool   `tfsdk:"was_exported"`
 }
 
 // KeyResponse represents the API response for a key

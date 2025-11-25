@@ -3752,9 +3752,9 @@ definitions:
   http.OrganizationConfig:
     properties:
       externalNodeIds:
-        description: External node IDs from connection_items table
+        description: External node IDs from external_node_fabric_orderer table
         items:
-          type: string
+          type: integer
         type: array
       id:
         type: integer

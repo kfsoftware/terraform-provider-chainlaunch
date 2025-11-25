@@ -30,24 +30,24 @@ type OrganizationResource struct {
 
 // OrganizationResourceModel describes the resource data model.
 type OrganizationResourceModel struct {
-	ID                types.String `tfsdk:"id"`
-	MSPID             types.String `tfsdk:"msp_id"`
-	Description       types.String `tfsdk:"description"`
-	ProviderID        types.Int64  `tfsdk:"provider_id"`
-	ProviderName      types.String `tfsdk:"provider_name"`
-	CACertValidFor    types.String `tfsdk:"ca_cert_valid_for"`
-	CertValidFor      types.String `tfsdk:"cert_valid_for"`
-	SignCAKeyId       types.Int64  `tfsdk:"sign_ca_key_id"`
-	TlsCAKeyId        types.Int64  `tfsdk:"tls_ca_key_id"`
-	AdminTlsKeyId     types.Int64  `tfsdk:"admin_tls_key_id"`
-	AdminSignKeyId    types.Int64  `tfsdk:"admin_sign_key_id"`
-	ClientSignKeyId   types.Int64  `tfsdk:"client_sign_key_id"`
-	SignPublicKey     types.String `tfsdk:"sign_public_key"`
-	SignCertificate   types.String `tfsdk:"sign_certificate"`
-	TlsPublicKey      types.String `tfsdk:"tls_public_key"`
-	TlsCertificate    types.String `tfsdk:"tls_certificate"`
-	CreatedAt         types.String `tfsdk:"created_at"`
-	UpdatedAt         types.String `tfsdk:"updated_at"`
+	ID              types.String `tfsdk:"id"`
+	MSPID           types.String `tfsdk:"msp_id"`
+	Description     types.String `tfsdk:"description"`
+	ProviderID      types.Int64  `tfsdk:"provider_id"`
+	ProviderName    types.String `tfsdk:"provider_name"`
+	CACertValidFor  types.String `tfsdk:"ca_cert_valid_for"`
+	CertValidFor    types.String `tfsdk:"cert_valid_for"`
+	SignCAKeyId     types.Int64  `tfsdk:"sign_ca_key_id"`
+	TlsCAKeyId      types.Int64  `tfsdk:"tls_ca_key_id"`
+	AdminTlsKeyId   types.Int64  `tfsdk:"admin_tls_key_id"`
+	AdminSignKeyId  types.Int64  `tfsdk:"admin_sign_key_id"`
+	ClientSignKeyId types.Int64  `tfsdk:"client_sign_key_id"`
+	SignPublicKey   types.String `tfsdk:"sign_public_key"`
+	SignCertificate types.String `tfsdk:"sign_certificate"`
+	TlsPublicKey    types.String `tfsdk:"tls_public_key"`
+	TlsCertificate  types.String `tfsdk:"tls_certificate"`
+	CreatedAt       types.String `tfsdk:"created_at"`
+	UpdatedAt       types.String `tfsdk:"updated_at"`
 }
 
 func (r *OrganizationResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {

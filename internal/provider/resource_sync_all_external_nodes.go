@@ -274,16 +274,16 @@ func (r *SyncAllExternalNodesResource) performSyncAll(ctx context.Context, data 
 		data.BesuNodesDeleted = types.Int64Value(0)
 		emptySyncResults, _ := types.ListValueFrom(ctx, types.ObjectType{
 			AttrTypes: map[string]attr.Type{
-				"peer_node_id":             types.StringType,
-				"success":                  types.BoolType,
-				"error":                    types.StringType,
-				"organizations_added":      types.Int64Type,
-				"fabric_peers_added":       types.Int64Type,
-				"fabric_peers_deleted":     types.Int64Type,
-				"fabric_orderers_added":    types.Int64Type,
-				"fabric_orderers_deleted":  types.Int64Type,
-				"besu_nodes_added":         types.Int64Type,
-				"besu_nodes_deleted":       types.Int64Type,
+				"peer_node_id":            types.StringType,
+				"success":                 types.BoolType,
+				"error":                   types.StringType,
+				"organizations_added":     types.Int64Type,
+				"fabric_peers_added":      types.Int64Type,
+				"fabric_peers_deleted":    types.Int64Type,
+				"fabric_orderers_added":   types.Int64Type,
+				"fabric_orderers_deleted": types.Int64Type,
+				"besu_nodes_added":        types.Int64Type,
+				"besu_nodes_deleted":      types.Int64Type,
 			},
 		}, []SyncResultModel{})
 		data.SyncResults = emptySyncResults
@@ -292,15 +292,15 @@ func (r *SyncAllExternalNodesResource) performSyncAll(ctx context.Context, data 
 
 	// Step 2: Sync from each peer
 	var (
-		totalOrgsAdded         int64
-		totalPeersAdded        int64
-		totalPeersDeleted      int64
-		totalOrderersAdded     int64
-		totalOrderersDeleted   int64
-		totalBesuNodesAdded    int64
-		totalBesuNodesDeleted  int64
-		peerNodeIDs            []string
-		syncResults            []SyncResultModel
+		totalOrgsAdded        int64
+		totalPeersAdded       int64
+		totalPeersDeleted     int64
+		totalOrderersAdded    int64
+		totalOrderersDeleted  int64
+		totalBesuNodesAdded   int64
+		totalBesuNodesDeleted int64
+		peerNodeIDs           []string
+		syncResults           []SyncResultModel
 	)
 
 	for _, peer := range connectedPeersResp.ConnectedPeers {
@@ -393,16 +393,16 @@ func (r *SyncAllExternalNodesResource) performSyncAll(ctx context.Context, data 
 
 	syncResultsList, diags := types.ListValueFrom(ctx, types.ObjectType{
 		AttrTypes: map[string]attr.Type{
-			"peer_node_id":             types.StringType,
-			"success":                  types.BoolType,
-			"error":                    types.StringType,
-			"organizations_added":      types.Int64Type,
-			"fabric_peers_added":       types.Int64Type,
-			"fabric_peers_deleted":     types.Int64Type,
-			"fabric_orderers_added":    types.Int64Type,
-			"fabric_orderers_deleted":  types.Int64Type,
-			"besu_nodes_added":         types.Int64Type,
-			"besu_nodes_deleted":       types.Int64Type,
+			"peer_node_id":            types.StringType,
+			"success":                 types.BoolType,
+			"error":                   types.StringType,
+			"organizations_added":     types.Int64Type,
+			"fabric_peers_added":      types.Int64Type,
+			"fabric_peers_deleted":    types.Int64Type,
+			"fabric_orderers_added":   types.Int64Type,
+			"fabric_orderers_deleted": types.Int64Type,
+			"besu_nodes_added":        types.Int64Type,
+			"besu_nodes_deleted":      types.Int64Type,
 		},
 	}, syncResults)
 	if diags.HasError() {

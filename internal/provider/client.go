@@ -114,34 +114,34 @@ func IsNotFoundError(err error) bool {
 
 // Organization types
 type Organization struct {
-	ID                int64  `json:"id"`
-	Name              string `json:"name"`
-	MSPID             string `json:"mspId"`
-	Description       string `json:"description,omitempty"`
-	CACertValidFor    string `json:"caCertValidFor,omitempty"`
-	CertValidFor      string `json:"certValidFor,omitempty"`
-	SignCAKeyId       int64  `json:"signCAKeyId,omitempty"`
-	TlsCAKeyId        int64  `json:"tlsCAKeyId,omitempty"`
-	AdminTlsKeyId     int64  `json:"adminTlsKeyId,omitempty"`
-	AdminSignKeyId    int64  `json:"adminSignKeyId,omitempty"`
-	ClientSignKeyId   int64  `json:"clientSignKeyId,omitempty"`
-	SignPublicKey     string `json:"signPublicKey,omitempty"`
-	SignCertificate   string `json:"signCertificate,omitempty"`
-	TlsPublicKey      string `json:"tlsPublicKey,omitempty"`
-	TlsCertificate    string `json:"tlsCertificate,omitempty"`
-	ProviderId        int64  `json:"providerId,omitempty"`
-	ProviderName      string `json:"providerName,omitempty"`
-	CreatedAt         string `json:"createdAt,omitempty"`
-	UpdatedAt         string `json:"updatedAt,omitempty"`
+	ID              int64  `json:"id"`
+	Name            string `json:"name"`
+	MSPID           string `json:"mspId"`
+	Description     string `json:"description,omitempty"`
+	CACertValidFor  string `json:"caCertValidFor,omitempty"`
+	CertValidFor    string `json:"certValidFor,omitempty"`
+	SignCAKeyId     int64  `json:"signCAKeyId,omitempty"`
+	TlsCAKeyId      int64  `json:"tlsCAKeyId,omitempty"`
+	AdminTlsKeyId   int64  `json:"adminTlsKeyId,omitempty"`
+	AdminSignKeyId  int64  `json:"adminSignKeyId,omitempty"`
+	ClientSignKeyId int64  `json:"clientSignKeyId,omitempty"`
+	SignPublicKey   string `json:"signPublicKey,omitempty"`
+	SignCertificate string `json:"signCertificate,omitempty"`
+	TlsPublicKey    string `json:"tlsPublicKey,omitempty"`
+	TlsCertificate  string `json:"tlsCertificate,omitempty"`
+	ProviderId      int64  `json:"providerId,omitempty"`
+	ProviderName    string `json:"providerName,omitempty"`
+	CreatedAt       string `json:"createdAt,omitempty"`
+	UpdatedAt       string `json:"updatedAt,omitempty"`
 }
 
 type CreateOrganizationRequest struct {
-	Name             string `json:"name"`
-	MSPID            string `json:"mspId"`
-	Description      string `json:"description,omitempty"`
-	ProviderID       int    `json:"providerId,omitempty"`
-	CACertValidFor   string `json:"caCertValidFor,omitempty"`
-	CertValidFor     string `json:"certValidFor,omitempty"`
+	Name           string `json:"name"`
+	MSPID          string `json:"mspId"`
+	Description    string `json:"description,omitempty"`
+	ProviderID     int    `json:"providerId,omitempty"`
+	CACertValidFor string `json:"caCertValidFor,omitempty"`
+	CertValidFor   string `json:"certValidFor,omitempty"`
 }
 
 // Node types
@@ -240,9 +240,9 @@ type FabricNetworkConfig struct {
 }
 
 type OrganizationConfig struct {
-	ID              int64    `json:"id"`
-	NodeIDs         []int64  `json:"nodeIds"`
-	ExternalNodeIDs []string `json:"externalNodeIds,omitempty"`
+	ID              int64   `json:"id"`
+	NodeIDs         []int64 `json:"nodeIds"`
+	ExternalNodeIDs []int64 `json:"externalNodeIds,omitempty"`
 }
 
 type ExternalOrgConfig struct {
@@ -422,21 +422,21 @@ type NodeAcceptInvitationResponse struct {
 
 // Organization Import types
 type ImportOrganizationRequest struct {
-	MSPID      string                 `json:"mspId"`
-	Name       string                 `json:"name"`
-	ProviderID int64                  `json:"providerId"`
-	SourceType string                 `json:"sourceType"` // "raw", "vault", "aws_kms"
-	Description string                `json:"description,omitempty"`
-	RawImport  *RawImportData         `json:"rawImport,omitempty"`
-	VaultImport *VaultImportData      `json:"vaultImport,omitempty"`
-	AWSKmsImport *AWSKMSImportData    `json:"awsKmsImport,omitempty"`
+	MSPID        string            `json:"mspId"`
+	Name         string            `json:"name"`
+	ProviderID   int64             `json:"providerId"`
+	SourceType   string            `json:"sourceType"` // "raw", "vault", "aws_kms"
+	Description  string            `json:"description,omitempty"`
+	RawImport    *RawImportData    `json:"rawImport,omitempty"`
+	VaultImport  *VaultImportData  `json:"vaultImport,omitempty"`
+	AWSKmsImport *AWSKMSImportData `json:"awsKmsImport,omitempty"`
 }
 
 type RawImportData struct {
-	SignCaCert        string `json:"signCaCert"`
-	SignCaPrivateKey  string `json:"signCaPrivateKey,omitempty"`
-	TLSCaCert         string `json:"tlsCaCert"`
-	TLSCaPrivateKey   string `json:"tlsCaPrivateKey,omitempty"`
+	SignCaCert       string `json:"signCaCert"`
+	SignCaPrivateKey string `json:"signCaPrivateKey,omitempty"`
+	TLSCaCert        string `json:"tlsCaCert"`
+	TLSCaPrivateKey  string `json:"tlsCaPrivateKey,omitempty"`
 }
 
 type VaultImportData struct {
@@ -445,10 +445,10 @@ type VaultImportData struct {
 }
 
 type AWSKMSImportData struct {
-	SignCaCert   string `json:"signCaCert"`
-	SignCaKeyId  string `json:"signCaKeyId"`
-	TLSCaCert    string `json:"tlsCaCert"`
-	TLSCaKeyId   string `json:"tlsCaKeyId"`
+	SignCaCert  string `json:"signCaCert"`
+	SignCaKeyId string `json:"signCaKeyId"`
+	TLSCaCert   string `json:"tlsCaCert"`
+	TLSCaKeyId  string `json:"tlsCaKeyId"`
 }
 
 // Network Share types
@@ -485,4 +485,20 @@ type ChaincodeShareResponse struct {
 	Metadata    map[string]string `json:"metadata,omitempty"`
 	ExpiresAt   string            `json:"expiresAt,omitempty"`
 	CreatedAt   string            `json:"createdAt,omitempty"`
+}
+
+// Connected Peers types
+type ConnectedPeer struct {
+	ID                int64  `json:"id"`
+	NodeID            string `json:"node_id"`
+	PeerEndpoint      string `json:"peer_endpoint"`
+	PeerPublicKey     string `json:"peer_public_key"`
+	Status            string `json:"status"`
+	ConnectedAt       string `json:"connected_at"`
+	AnalyticsEnabled  bool   `json:"analytics_enabled"`
+	MetricsFederation bool   `json:"metrics_federation"`
+}
+
+type ConnectedPeersResponse struct {
+	ConnectedPeers []ConnectedPeer `json:"connected_peers"`
 }

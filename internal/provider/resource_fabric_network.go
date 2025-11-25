@@ -66,9 +66,9 @@ type FabricNetworkResourceModel struct {
 }
 
 type OrganizationConfigModel struct {
-	ID              types.Int64    `tfsdk:"id"`
-	NodeIDs         []types.Int64  `tfsdk:"node_ids"`
-	ExternalNodeIDs []types.String `tfsdk:"external_node_ids"`
+	ID              types.Int64   `tfsdk:"id"`
+	NodeIDs         []types.Int64 `tfsdk:"node_ids"`
+	ExternalNodeIDs []types.Int64 `tfsdk:"external_node_ids"`
 }
 
 type ExternalOrgConfigModel struct {
@@ -186,7 +186,7 @@ func (r *FabricNetworkResource) Schema(ctx context.Context, req resource.SchemaR
 						},
 						"external_node_ids": schema.ListAttribute{
 							Optional:    true,
-							ElementType: types.StringType,
+							ElementType: types.Int64Type,
 							Description: "List of external peer node IDs from connected instances (from external_nodes data source).",
 						},
 					},
@@ -208,7 +208,7 @@ func (r *FabricNetworkResource) Schema(ctx context.Context, req resource.SchemaR
 						},
 						"external_node_ids": schema.ListAttribute{
 							Optional:    true,
-							ElementType: types.StringType,
+							ElementType: types.Int64Type,
 							Description: "List of external orderer node IDs from connected instances (from external_nodes data source).",
 						},
 					},
@@ -905,11 +905,11 @@ func (r *FabricNetworkResource) buildFabricNetworkConfig(ctx context.Context, da
 				nodeIDs[j] = nid.ValueInt64()
 			}
 
-			var externalNodeIDs []string
+			var externalNodeIDs []int64
 			if len(org.ExternalNodeIDs) > 0 {
-				externalNodeIDs = make([]string, len(org.ExternalNodeIDs))
+				externalNodeIDs = make([]int64, len(org.ExternalNodeIDs))
 				for j, eid := range org.ExternalNodeIDs {
-					externalNodeIDs[j] = eid.ValueString()
+					externalNodeIDs[j] = eid.ValueInt64()
 				}
 			}
 
@@ -929,11 +929,11 @@ func (r *FabricNetworkResource) buildFabricNetworkConfig(ctx context.Context, da
 				nodeIDs[j] = nid.ValueInt64()
 			}
 
-			var externalNodeIDs []string
+			var externalNodeIDs []int64
 			if len(org.ExternalNodeIDs) > 0 {
-				externalNodeIDs = make([]string, len(org.ExternalNodeIDs))
+				externalNodeIDs = make([]int64, len(org.ExternalNodeIDs))
 				for j, eid := range org.ExternalNodeIDs {
-					externalNodeIDs[j] = eid.ValueString()
+					externalNodeIDs[j] = eid.ValueInt64()
 				}
 			}
 

@@ -180,6 +180,7 @@ func (p *ChainlaunchProvider) Resources(ctx context.Context) []func() resource.R
 		NewPluginResource,
 		NewPluginDeploymentResource,
 		NewChainlaunchInstallSSHResource,
+		NewSharedNetworkAcceptResource,
 	}
 }
 
@@ -203,6 +204,8 @@ func (p *ChainlaunchProvider) DataSources(ctx context.Context) []func() datasour
 		NewExternalFabricOrderersDataSource,
 		NewExternalBesuNodesDataSource,
 		NewPluginDataSource,
+		NewConnectedPeersDataSource,
+		NewSharedNetworksDataSource,
 	}
 }
 
