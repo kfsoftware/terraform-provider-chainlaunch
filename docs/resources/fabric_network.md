@@ -162,7 +162,7 @@ Required:
 
 Optional:
 
-- `external_node_ids` (List of String) List of external orderer node IDs from connected instances (from external_nodes data source).
+- `external_node_ids` (List of Number) List of external orderer node IDs from connected instances (from external_nodes data source).
 
 
 <a id="nestedatt--orderer_policies"></a>
@@ -190,7 +190,7 @@ Required:
 
 Optional:
 
-- `external_node_ids` (List of String) List of external peer node IDs from connected instances (from external_nodes data source).
+- `external_node_ids` (List of Number) List of external peer node IDs from connected instances (from external_nodes data source).
 
 
 <a id="nestedatt--smartbft_consenters"></a>

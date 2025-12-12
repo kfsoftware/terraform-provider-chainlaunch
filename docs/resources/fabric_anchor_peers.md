@@ -4,12 +4,12 @@
 page_title: "chainlaunch_fabric_anchor_peers Resource - chainlaunch"
 subcategory: ""
 description: |-
-  Sets the anchor peers for an organization in a Fabric network/channel. Anchor peers are used for cross-organization gossip communication. Note: Deleting this resource only removes it from Terraform state - anchor peers cannot be truly destroyed, only updated. To clear anchor peers, update the resource with an empty peer_ids list.
+  Sets the anchor peers for an organization in a Fabric network/channel. Anchor peers are used for cross-organization gossip communication. Note: Deleting this resource only removes it from Terraform state - anchor peers cannot be truly destroyed, only updated. To clear anchor peers, update the resource with an empty list. You can specify anchor peers either by peer IDs (anchor_peer_ids) or directly by host:port (anchor_peers). At least one must be provided.
 ---
 
 # chainlaunch_fabric_anchor_peers (Resource)
 
-Sets the anchor peers for an organization in a Fabric network/channel. Anchor peers are used for cross-organization gossip communication. Note: Deleting this resource only removes it from Terraform state - anchor peers cannot be truly destroyed, only updated. To clear anchor peers, update the resource with an empty peer_ids list.
+Sets the anchor peers for an organization in a Fabric network/channel. Anchor peers are used for cross-organization gossip communication. Note: Deleting this resource only removes it from Terraform state - anchor peers cannot be truly destroyed, only updated. To clear anchor peers, update the resource with an empty list. You can specify anchor peers either by peer IDs (anchor_peer_ids) or directly by host:port (anchor_peers). At least one must be provided.
 
 
 
@@ -18,11 +18,23 @@ Sets the anchor peers for an organization in a Fabric network/channel. Anchor pe
 
 ### Required
 
-- `anchor_peer_ids` (List of Number) List of peer node IDs to set as anchor peers for this organization.
 - `network_id` (Number) The ID of the Fabric network (channel).
 - `organization_id` (Number) The ID of the organization.
+
+### Optional
+
+- `anchor_peer_ids` (List of Number) List of peer node IDs to set as anchor peers for this organization. The provider will look up the host:port for each peer. Mutually exclusive with anchor_peers.
+- `anchor_peers` (Attributes List) List of anchor peers specified directly by host:port. Useful for external nodes. Mutually exclusive with anchor_peer_ids. (see [below for nested schema](#nestedatt--anchor_peers))
 
 ### Read-Only
 
 - `id` (String) The unique identifier for this resource (format: network_id:organization_id).
 - `transaction_id` (String) The transaction ID of the anchor peer update.
+
+<a id="nestedatt--anchor_peers"></a>
+### Nested Schema for `anchor_peers`
+
+Required:
+
+- `host` (String) Hostname or IP address of the anchor peer.
+- `port` (Number) Port number of the anchor peer.

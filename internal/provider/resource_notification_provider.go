@@ -49,6 +49,7 @@ type SMTPConfigModel struct {
 	FromEmail     types.String `tfsdk:"from_email"`
 	FromName      types.String `tfsdk:"from_name"`
 	ToEmail       types.String `tfsdk:"to_email"`
+	Recipients    types.List   `tfsdk:"recipients"`
 	UseTLS        types.Bool   `tfsdk:"use_tls"`
 	SkipTLSVerify types.Bool   `tfsdk:"skip_tls_verify"`
 }
@@ -138,8 +139,15 @@ func (r *NotificationProviderResource) Schema(ctx context.Context, req resource.
 						MarkdownDescription: "Sender display name",
 					},
 					"to_email": schema.StringAttribute{
-						Required:            true,
-						MarkdownDescription: "Recipient email address",
+						Optional:            true,
+						MarkdownDescription: "Recipient email address (deprecated, use recipients instead)",
+						DeprecationMessage:  "Use 'recipients' instead for multiple email addresses",
+					},
+					"recipients": schema.ListAttribute{
+						Optional:            true,
+						Computed:            true,
+						ElementType:         types.StringType,
+						MarkdownDescription: "List of recipient email addresses for notifications",
 					},
 					"use_tls": schema.BoolAttribute{
 						Optional:            true,
@@ -215,6 +223,19 @@ func (r *NotificationProviderResource) Create(ctx context.Context, req resource.
 		}
 		if !data.SMTPConfig.Password.IsNull() {
 			config["password"] = data.SMTPConfig.Password.ValueString()
+		}
+
+		// Add recipients list to config
+		if !data.SMTPConfig.Recipients.IsNull() && !data.SMTPConfig.Recipients.IsUnknown() {
+			var recipients []string
+			resp.Diagnostics.Append(data.SMTPConfig.Recipients.ElementsAs(ctx, &recipients, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			config["recipients"] = recipients
+		} else if !data.SMTPConfig.ToEmail.IsNull() {
+			// Fallback to to_email for backward compatibility
+			config["recipients"] = []string{data.SMTPConfig.ToEmail.ValueString()}
 		}
 	} else {
 		resp.Diagnostics.AddError("Invalid Configuration", "SMTP config is required when type is 'SMTP'")
@@ -382,6 +403,30 @@ func (r *NotificationProviderResource) Read(ctx context.Context, req resource.Re
 			data.SMTPConfig.UseTLS = types.BoolValue(tls)
 		}
 
+		// Parse recipients from API response
+		if recipientsList, ok := configMap["recipients"].([]interface{}); ok {
+			recipients := make([]string, 0, len(recipientsList))
+			for _, r := range recipientsList {
+				if email, ok := r.(string); ok {
+					recipients = append(recipients, email)
+				}
+			}
+			recipientsListValue, diags := types.ListValueFrom(ctx, types.StringType, recipients)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			data.SMTPConfig.Recipients = recipientsListValue
+
+			// Also set to_email for backward compatibility (first recipient)
+			if len(recipients) > 0 && data.SMTPConfig.ToEmail.IsNull() {
+				data.SMTPConfig.ToEmail = types.StringValue(recipients[0])
+			}
+		} else {
+			// Set empty list if not present
+			data.SMTPConfig.Recipients = types.ListNull(types.StringType)
+		}
+
 		// Set computed defaults for fields not returned by API
 		if data.SMTPConfig.FromName.IsNull() {
 			data.SMTPConfig.FromName = types.StringValue("Chainlaunch Notifications")
@@ -431,6 +476,19 @@ func (r *NotificationProviderResource) Update(ctx context.Context, req resource.
 		}
 		if !data.SMTPConfig.Password.IsNull() {
 			config["password"] = data.SMTPConfig.Password.ValueString()
+		}
+
+		// Add recipients list to config
+		if !data.SMTPConfig.Recipients.IsNull() && !data.SMTPConfig.Recipients.IsUnknown() {
+			var recipients []string
+			resp.Diagnostics.Append(data.SMTPConfig.Recipients.ElementsAs(ctx, &recipients, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			config["recipients"] = recipients
+		} else if !data.SMTPConfig.ToEmail.IsNull() {
+			// Fallback to to_email for backward compatibility
+			config["recipients"] = []string{data.SMTPConfig.ToEmail.ValueString()}
 		}
 	} else {
 		resp.Diagnostics.AddError("Invalid Configuration", "SMTP config is required when type is 'SMTP'")

@@ -3420,6 +3420,8 @@ definitions:
         type: boolean
       notifyBackupSuccess:
         type: boolean
+      notifyDiskSpaceWarning:
+        type: boolean
       notifyNodeDowntime:
         type: boolean
       notifyS3ConnIssue:
@@ -3813,6 +3815,8 @@ definitions:
       notifyBackupFailure:
         type: boolean
       notifyBackupSuccess:
+        type: boolean
+      notifyDiskSpaceWarning:
         type: boolean
       notifyNodeDowntime:
         type: boolean
@@ -4361,6 +4365,8 @@ definitions:
         type: boolean
       notifyBackupSuccess:
         type: boolean
+      notifyDiskSpaceWarning:
+        type: boolean
       notifyNodeDowntime:
         type: boolean
       notifyS3ConnIssue:
@@ -4710,9 +4716,11 @@ definitions:
   notifications.ProviderType:
     enum:
     - SMTP
+    - WEBHOOK
     type: string
     x-enum-varnames:
     - ProviderTypeSMTP
+    - ProviderTypeWebhook
   plugin.AvailablePluginsResponse:
     properties:
       last_updated:
@@ -7915,6 +7923,20 @@ paths:
       summary: Get API key logs
       tags:
       - API Keys
+  /api/webhooks/events:
+    get:
+      description: Returns all available webhook event types organized by category
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Map of event categories to event info
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get available webhook events
+      tags:
+      - webhooks
   /audit/logs:
     get:
       consumes:
