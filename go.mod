@@ -3,7 +3,7 @@ module github.com/chainlaunch/terraform-provider-chainlaunch
 go 1.24.0
 
 require (
-	github.com/go-openapi/errors v0.22.3
+	github.com/go-openapi/errors v0.22.5
 	github.com/go-openapi/runtime v0.29.0
 	github.com/go-openapi/strfmt v0.24.0
 	github.com/go-openapi/swag v0.25.1
