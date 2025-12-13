@@ -91,6 +91,9 @@ type HandlerSignCertificateResponse struct {
 	// status
 	Status string `json:"status,omitempty"`
 
+	// Vault secret path if applicable (Vault provider)
+	VaultPath string `json:"vaultPath,omitempty"`
+
 	// Was private key exported (or generated locally)
 	WasExported bool `json:"wasExported,omitempty"`
 }

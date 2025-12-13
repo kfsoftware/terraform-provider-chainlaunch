@@ -24,6 +24,9 @@ type ModelsKeyProviderInfo struct {
 	// name
 	Name string `json:"name,omitempty"`
 
+	// Mount path for Vault or key alias prefix for AWS KMS
+	Path string `json:"path,omitempty"`
+
 	// Added to know which provider is being used
 	Type struct {
 		ModelsKeyProviderType

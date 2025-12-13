@@ -160,6 +160,10 @@ Required:
 - `id` (Number) Organization ID.
 - `node_ids` (List of Number) List of orderer node IDs (consenters) for this organization.
 
+Optional:
+
+- `external_node_ids` (List of Number) List of external orderer node IDs from connected instances (from external_nodes data source).
+
 
 <a id="nestedatt--orderer_policies"></a>
 ### Nested Schema for `orderer_policies`
@@ -183,6 +187,10 @@ Required:
 
 - `id` (Number) Organization ID.
 - `node_ids` (List of Number) List of peer node IDs for this organization.
+
+Optional:
+
+- `external_node_ids` (List of Number) List of external peer node IDs from connected instances (from external_nodes data source).
 
 
 <a id="nestedatt--smartbft_consenters"></a>

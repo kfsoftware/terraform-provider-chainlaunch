@@ -146,6 +146,7 @@ func (p *ChainlaunchProvider) Configure(ctx context.Context, req provider.Config
 func (p *ChainlaunchProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewOrganizationResource,
+		NewFabricOrganizationImportResource,
 		NewNodeResource,
 		NewNetworkResource,
 		NewKeyProviderResource,
@@ -170,11 +171,16 @@ func (p *ChainlaunchProvider) Resources(ctx context.Context) []func() resource.R
 		NewNodeInvitationResource,
 		NewNodeAcceptInvitationResource,
 		NewExternalNodesSyncResource,
+		NewSyncAllExternalNodesResource,
+		NewNetworkShareResource,
+		NewChaincodeDefinitionShareResource,
 		NewMetricsPrometheusResource,
 		NewMetricsJobResource,
 		NewNotificationProviderResource,
 		NewPluginResource,
 		NewPluginDeploymentResource,
+		NewChainlaunchInstallSSHResource,
+		NewSharedNetworkAcceptResource,
 	}
 }
 
@@ -183,19 +189,23 @@ func (p *ChainlaunchProvider) DataSources(ctx context.Context) []func() datasour
 		NewOrganizationDataSource,
 		NewNodeDataSource,
 		NewNetworkDataSource,
+		NewKeyDataSource,
 		NewKeyProviderDataSource,
 		NewKeyProvidersDataSource,
 		NewFabricPeerDataSource,
 		NewFabricOrdererDataSource,
 		NewFabricNetworkDataSource,
-		NewBesuNetworkDataSource,
+		// NewBesuNetworkDataSource, // Commented out - data_source_besu_network.go is skipped
 		NewBesuNodeDataSource,
 		NewFabricChaincodeDataSource,
+		NewExternalNodesDataSource,
 		NewExternalFabricOrganizationsDataSource,
 		NewExternalFabricPeersDataSource,
 		NewExternalFabricOrderersDataSource,
 		NewExternalBesuNodesDataSource,
 		NewPluginDataSource,
+		NewConnectedPeersDataSource,
+		NewSharedNetworksDataSource,
 	}
 }
 

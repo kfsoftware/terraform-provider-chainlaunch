@@ -44,11 +44,17 @@ type HandlerOrganizationResponse struct {
 	// provider name
 	ProviderName string `json:"providerName,omitempty"`
 
+	// CA key for signing certificates
+	SignCAKeyID int64 `json:"signCAKeyId,omitempty"`
+
 	// sign certificate
 	SignCertificate string `json:"signCertificate,omitempty"`
 
 	// sign public key
 	SignPublicKey string `json:"signPublicKey,omitempty"`
+
+	// CA key for TLS certificates
+	TLSCAKeyID int64 `json:"tlsCAKeyId,omitempty"`
 
 	// tls certificate
 	TLSCertificate string `json:"tlsCertificate,omitempty"`

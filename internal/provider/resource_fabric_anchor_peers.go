@@ -31,7 +31,13 @@ type FabricAnchorPeersResourceModel struct {
 	NetworkID      types.Int64  `tfsdk:"network_id"`
 	OrganizationID types.Int64  `tfsdk:"organization_id"`
 	AnchorPeerIDs  types.List   `tfsdk:"anchor_peer_ids"`
+	AnchorPeers    types.List   `tfsdk:"anchor_peers"`
 	TransactionID  types.String `tfsdk:"transaction_id"`
+}
+
+type AnchorPeerModel struct {
+	Host types.String `tfsdk:"host"`
+	Port types.Int64  `tfsdk:"port"`
 }
 
 func (r *FabricAnchorPeersResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -42,7 +48,8 @@ func (r *FabricAnchorPeersResource) Schema(ctx context.Context, req resource.Sch
 	resp.Schema = schema.Schema{
 		Description: "Sets the anchor peers for an organization in a Fabric network/channel. Anchor peers are used for cross-organization gossip communication. " +
 			"Note: Deleting this resource only removes it from Terraform state - anchor peers cannot be truly destroyed, only updated. " +
-			"To clear anchor peers, update the resource with an empty peer_ids list.",
+			"To clear anchor peers, update the resource with an empty list. " +
+			"You can specify anchor peers either by peer IDs (anchor_peer_ids) or directly by host:port (anchor_peers). At least one must be provided.",
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -67,9 +74,25 @@ func (r *FabricAnchorPeersResource) Schema(ctx context.Context, req resource.Sch
 				},
 			},
 			"anchor_peer_ids": schema.ListAttribute{
-				Required:    true,
+				Optional:    true,
 				ElementType: types.Int64Type,
-				Description: "List of peer node IDs to set as anchor peers for this organization.",
+				Description: "List of peer node IDs to set as anchor peers for this organization. The provider will look up the host:port for each peer. Mutually exclusive with anchor_peers.",
+			},
+			"anchor_peers": schema.ListNestedAttribute{
+				Optional:    true,
+				Description: "List of anchor peers specified directly by host:port. Useful for external nodes. Mutually exclusive with anchor_peer_ids.",
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"host": schema.StringAttribute{
+							Required:    true,
+							Description: "Hostname or IP address of the anchor peer.",
+						},
+						"port": schema.Int64Attribute{
+							Required:    true,
+							Description: "Port number of the anchor peer.",
+						},
+					},
+				},
 			},
 			"transaction_id": schema.StringAttribute{
 				Computed:    true,
@@ -173,10 +196,12 @@ func (r *FabricAnchorPeersResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	// Convert anchor_peer_ids list to slice
-	var anchorPeerIDs []int64
-	resp.Diagnostics.Append(data.AnchorPeerIDs.ElementsAs(ctx, &anchorPeerIDs, false)...)
-	if resp.Diagnostics.HasError() {
+	// Validate that at least one of anchor_peer_ids or anchor_peers is provided
+	hasIDs := !data.AnchorPeerIDs.IsNull() && len(data.AnchorPeerIDs.Elements()) > 0
+	hasPeers := !data.AnchorPeers.IsNull() && len(data.AnchorPeers.Elements()) > 0
+
+	if !hasIDs && !hasPeers {
+		resp.Diagnostics.AddError("Validation Error", "At least one of anchor_peer_ids or anchor_peers must be provided")
 		return
 	}
 
@@ -188,44 +213,70 @@ func (r *FabricAnchorPeersResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	var anchorPeers []AnchorPeer
-	for _, peerID := range anchorPeerIDs {
-		// Get peer details
-		peerBody, err := r.client.DoRequest("GET", fmt.Sprintf("/nodes/%d", peerID), nil)
-		if err != nil {
-			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read peer %d: %s", peerID, err))
+
+	// Handle anchor_peer_ids (look up host:port from API)
+	if hasIDs {
+		var anchorPeerIDs []int64
+		resp.Diagnostics.Append(data.AnchorPeerIDs.ElementsAs(ctx, &anchorPeerIDs, false)...)
+		if resp.Diagnostics.HasError() {
 			return
 		}
 
-		var peerResp struct {
-			FabricPeer map[string]interface{} `json:"fabricPeer"`
-		}
-		if err := json.Unmarshal(peerBody, &peerResp); err != nil {
-			resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse peer %d response: %s", peerID, err))
-			return
-		}
-
-		// Extract external endpoint
-		if externalEndpoint, ok := peerResp.FabricPeer["externalEndpoint"].(string); ok {
-			// Parse host:port using strings.Split
-			parts := strings.Split(externalEndpoint, ":")
-			if len(parts) != 2 {
-				resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Invalid endpoint format %s (expected host:port)", externalEndpoint))
-				return
-			}
-
-			port, err := strconv.Atoi(parts[1])
+		for _, peerID := range anchorPeerIDs {
+			// Get peer details
+			peerBody, err := r.client.DoRequest("GET", fmt.Sprintf("/nodes/%d", peerID), nil)
 			if err != nil {
-				resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse port in endpoint %s: %s", externalEndpoint, err))
+				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read peer %d: %s", peerID, err))
 				return
 			}
 
-			anchorPeers = append(anchorPeers, AnchorPeer{
-				Host: parts[0],
-				Port: port,
-			})
-		} else {
-			resp.Diagnostics.AddError("Missing Field", fmt.Sprintf("Peer %d does not have externalEndpoint", peerID))
+			var peerResp struct {
+				FabricPeer map[string]interface{} `json:"fabricPeer"`
+			}
+			if err := json.Unmarshal(peerBody, &peerResp); err != nil {
+				resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse peer %d response: %s", peerID, err))
+				return
+			}
+
+			// Extract external endpoint
+			if externalEndpoint, ok := peerResp.FabricPeer["externalEndpoint"].(string); ok {
+				// Parse host:port using strings.Split
+				parts := strings.Split(externalEndpoint, ":")
+				if len(parts) != 2 {
+					resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Invalid endpoint format %s (expected host:port)", externalEndpoint))
+					return
+				}
+
+				port, err := strconv.Atoi(parts[1])
+				if err != nil {
+					resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse port in endpoint %s: %s", externalEndpoint, err))
+					return
+				}
+
+				anchorPeers = append(anchorPeers, AnchorPeer{
+					Host: parts[0],
+					Port: port,
+				})
+			} else {
+				resp.Diagnostics.AddError("Missing Field", fmt.Sprintf("Peer %d does not have externalEndpoint", peerID))
+				return
+			}
+		}
+	}
+
+	// Handle anchor_peers (use host:port directly)
+	if hasPeers {
+		var anchorPeerModels []AnchorPeerModel
+		resp.Diagnostics.Append(data.AnchorPeers.ElementsAs(ctx, &anchorPeerModels, false)...)
+		if resp.Diagnostics.HasError() {
 			return
+		}
+
+		for _, peer := range anchorPeerModels {
+			anchorPeers = append(anchorPeers, AnchorPeer{
+				Host: peer.Host.ValueString(),
+				Port: int(peer.Port.ValueInt64()),
+			})
 		}
 	}
 
@@ -274,10 +325,12 @@ func (r *FabricAnchorPeersResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	// Convert anchor_peer_ids list to slice
-	var anchorPeerIDs []int64
-	resp.Diagnostics.Append(data.AnchorPeerIDs.ElementsAs(ctx, &anchorPeerIDs, false)...)
-	if resp.Diagnostics.HasError() {
+	// Validate that at least one of anchor_peer_ids or anchor_peers is provided
+	hasIDs := !data.AnchorPeerIDs.IsNull() && len(data.AnchorPeerIDs.Elements()) > 0
+	hasPeers := !data.AnchorPeers.IsNull() && len(data.AnchorPeers.Elements()) > 0
+
+	if !hasIDs && !hasPeers {
+		resp.Diagnostics.AddError("Validation Error", "At least one of anchor_peer_ids or anchor_peers must be provided")
 		return
 	}
 
@@ -288,44 +341,70 @@ func (r *FabricAnchorPeersResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	var anchorPeers []AnchorPeer
-	for _, peerID := range anchorPeerIDs {
-		// Get peer details
-		peerBody, err := r.client.DoRequest("GET", fmt.Sprintf("/nodes/%d", peerID), nil)
-		if err != nil {
-			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read peer %d: %s", peerID, err))
+
+	// Handle anchor_peer_ids (look up host:port from API)
+	if hasIDs {
+		var anchorPeerIDs []int64
+		resp.Diagnostics.Append(data.AnchorPeerIDs.ElementsAs(ctx, &anchorPeerIDs, false)...)
+		if resp.Diagnostics.HasError() {
 			return
 		}
 
-		var peerResp struct {
-			FabricPeer map[string]interface{} `json:"fabricPeer"`
-		}
-		if err := json.Unmarshal(peerBody, &peerResp); err != nil {
-			resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse peer %d response: %s", peerID, err))
-			return
-		}
-
-		// Extract external endpoint
-		if externalEndpoint, ok := peerResp.FabricPeer["externalEndpoint"].(string); ok {
-			// Parse host:port using strings.Split
-			parts := strings.Split(externalEndpoint, ":")
-			if len(parts) != 2 {
-				resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Invalid endpoint format %s (expected host:port)", externalEndpoint))
-				return
-			}
-
-			port, err := strconv.Atoi(parts[1])
+		for _, peerID := range anchorPeerIDs {
+			// Get peer details
+			peerBody, err := r.client.DoRequest("GET", fmt.Sprintf("/nodes/%d", peerID), nil)
 			if err != nil {
-				resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse port in endpoint %s: %s", externalEndpoint, err))
+				resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read peer %d: %s", peerID, err))
 				return
 			}
 
-			anchorPeers = append(anchorPeers, AnchorPeer{
-				Host: parts[0],
-				Port: port,
-			})
-		} else {
-			resp.Diagnostics.AddError("Missing Field", fmt.Sprintf("Peer %d does not have externalEndpoint", peerID))
+			var peerResp struct {
+				FabricPeer map[string]interface{} `json:"fabricPeer"`
+			}
+			if err := json.Unmarshal(peerBody, &peerResp); err != nil {
+				resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse peer %d response: %s", peerID, err))
+				return
+			}
+
+			// Extract external endpoint
+			if externalEndpoint, ok := peerResp.FabricPeer["externalEndpoint"].(string); ok {
+				// Parse host:port using strings.Split
+				parts := strings.Split(externalEndpoint, ":")
+				if len(parts) != 2 {
+					resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Invalid endpoint format %s (expected host:port)", externalEndpoint))
+					return
+				}
+
+				port, err := strconv.Atoi(parts[1])
+				if err != nil {
+					resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse port in endpoint %s: %s", externalEndpoint, err))
+					return
+				}
+
+				anchorPeers = append(anchorPeers, AnchorPeer{
+					Host: parts[0],
+					Port: port,
+				})
+			} else {
+				resp.Diagnostics.AddError("Missing Field", fmt.Sprintf("Peer %d does not have externalEndpoint", peerID))
+				return
+			}
+		}
+	}
+
+	// Handle anchor_peers (use host:port directly)
+	if hasPeers {
+		var anchorPeerModels []AnchorPeerModel
+		resp.Diagnostics.Append(data.AnchorPeers.ElementsAs(ctx, &anchorPeerModels, false)...)
+		if resp.Diagnostics.HasError() {
 			return
+		}
+
+		for _, peer := range anchorPeerModels {
+			anchorPeers = append(anchorPeers, AnchorPeer{
+				Host: peer.Host.ValueString(),
+				Port: int(peer.Port.ValueInt64()),
+			})
 		}
 	}
 

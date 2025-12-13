@@ -49,6 +49,7 @@ type SMTPConfigModel struct {
 	FromEmail     types.String `tfsdk:"from_email"`
 	FromName      types.String `tfsdk:"from_name"`
 	ToEmail       types.String `tfsdk:"to_email"`
+	Recipients    types.List   `tfsdk:"recipients"`
 	UseTLS        types.Bool   `tfsdk:"use_tls"`
 	SkipTLSVerify types.Bool   `tfsdk:"skip_tls_verify"`
 }
@@ -138,8 +139,15 @@ func (r *NotificationProviderResource) Schema(ctx context.Context, req resource.
 						MarkdownDescription: "Sender display name",
 					},
 					"to_email": schema.StringAttribute{
-						Required:            true,
-						MarkdownDescription: "Recipient email address",
+						Optional:            true,
+						MarkdownDescription: "Recipient email address (deprecated, use recipients instead)",
+						DeprecationMessage:  "Use 'recipients' instead for multiple email addresses",
+					},
+					"recipients": schema.ListAttribute{
+						Optional:            true,
+						Computed:            true,
+						ElementType:         types.StringType,
+						MarkdownDescription: "List of recipient email addresses for notifications",
 					},
 					"use_tls": schema.BoolAttribute{
 						Optional:            true,
@@ -204,13 +212,10 @@ func (r *NotificationProviderResource) Create(ctx context.Context, req resource.
 	var config map[string]interface{}
 	if data.Type.ValueString() == "SMTP" && data.SMTPConfig != nil {
 		config = map[string]interface{}{
-			"host":            data.SMTPConfig.Host.ValueString(),
-			"port":            data.SMTPConfig.Port.ValueInt64(),
-			"from_email":      data.SMTPConfig.FromEmail.ValueString(),
-			"from_name":       data.SMTPConfig.FromName.ValueString(),
-			"to_email":        data.SMTPConfig.ToEmail.ValueString(),
-			"use_tls":         data.SMTPConfig.UseTLS.ValueBool(),
-			"skip_tls_verify": data.SMTPConfig.SkipTLSVerify.ValueBool(),
+			"host": data.SMTPConfig.Host.ValueString(),
+			"port": data.SMTPConfig.Port.ValueInt64(),
+			"from": data.SMTPConfig.FromEmail.ValueString(), // API expects "from", not "from_email"
+			"tls":  data.SMTPConfig.UseTLS.ValueBool(),      // API expects "tls", not "use_tls"
 		}
 
 		if !data.SMTPConfig.Username.IsNull() {
@@ -219,20 +224,33 @@ func (r *NotificationProviderResource) Create(ctx context.Context, req resource.
 		if !data.SMTPConfig.Password.IsNull() {
 			config["password"] = data.SMTPConfig.Password.ValueString()
 		}
+
+		// Add recipients list to config
+		if !data.SMTPConfig.Recipients.IsNull() && !data.SMTPConfig.Recipients.IsUnknown() {
+			var recipients []string
+			resp.Diagnostics.Append(data.SMTPConfig.Recipients.ElementsAs(ctx, &recipients, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			config["recipients"] = recipients
+		} else if !data.SMTPConfig.ToEmail.IsNull() {
+			// Fallback to to_email for backward compatibility
+			config["recipients"] = []string{data.SMTPConfig.ToEmail.ValueString()}
+		}
 	} else {
 		resp.Diagnostics.AddError("Invalid Configuration", "SMTP config is required when type is 'SMTP'")
 		return
 	}
 
 	createReq := map[string]interface{}{
-		"name":                  data.Name.ValueString(),
-		"type":                  data.Type.ValueString(),
-		"is_default":            data.IsDefault.ValueBool(),
-		"notify_backup_success": data.NotifyBackupSuccess.ValueBool(),
-		"notify_backup_failure": data.NotifyBackupFailure.ValueBool(),
-		"notify_node_downtime":  data.NotifyNodeDowntime.ValueBool(),
-		"notify_s3_conn_issue":  data.NotifyS3ConnIssue.ValueBool(),
-		"config":                config,
+		"name":                data.Name.ValueString(),
+		"type":                data.Type.ValueString(),
+		"isDefault":           data.IsDefault.ValueBool(),           // camelCase
+		"notifyBackupSuccess": data.NotifyBackupSuccess.ValueBool(), // camelCase
+		"notifyBackupFailure": data.NotifyBackupFailure.ValueBool(), // camelCase
+		"notifyNodeDowntime":  data.NotifyNodeDowntime.ValueBool(),  // camelCase
+		"notifyS3ConnIssue":   data.NotifyS3ConnIssue.ValueBool(),   // camelCase
+		"config":              config,
 	}
 
 	body, err := r.client.DoRequest("POST", "/notifications/providers", createReq)
@@ -247,10 +265,23 @@ func (r *NotificationProviderResource) Create(ctx context.Context, req resource.
 		return
 	}
 
-	// Set ID and other computed fields
-	if id, ok := providerResp["id"].(float64); ok {
-		data.ID = types.StringValue(fmt.Sprintf("%d", int64(id)))
+	// Set ID and other computed fields - handle various numeric types
+	var idStr string
+	switch id := providerResp["id"].(type) {
+	case float64:
+		idStr = fmt.Sprintf("%d", int64(id))
+	case int64:
+		idStr = fmt.Sprintf("%d", id)
+	case int:
+		idStr = fmt.Sprintf("%d", id)
+	case string:
+		idStr = id
+	default:
+		// ID is required - if not found, this is an error
+		resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to extract ID from response (unexpected type %T). Response: %+v", providerResp["id"], providerResp))
+		return
 	}
+	data.ID = types.StringValue(idStr)
 
 	if createdAt, ok := providerResp["createdAt"].(string); ok {
 		data.CreatedAt = types.StringValue(createdAt)
@@ -343,6 +374,71 @@ func (r *NotificationProviderResource) Read(ctx context.Context, req resource.Re
 		data.LastTestMessage = types.StringValue(lastTestMessage)
 	}
 
+	// Parse config from API response
+	if configMap, ok := providerResp["config"].(map[string]interface{}); ok {
+		if data.SMTPConfig == nil {
+			data.SMTPConfig = &SMTPConfigModel{}
+		}
+
+		if host, ok := configMap["host"].(string); ok {
+			data.SMTPConfig.Host = types.StringValue(host)
+		}
+
+		if port, ok := configMap["port"].(float64); ok {
+			data.SMTPConfig.Port = types.Int64Value(int64(port))
+		}
+
+		if from, ok := configMap["from"].(string); ok {
+			data.SMTPConfig.FromEmail = types.StringValue(from)
+		}
+
+		if username, ok := configMap["username"].(string); ok {
+			data.SMTPConfig.Username = types.StringValue(username)
+		}
+
+		// Note: password is not returned by API for security reasons
+		// Keep the password from state (already loaded via req.State.Get)
+
+		if tls, ok := configMap["tls"].(bool); ok {
+			data.SMTPConfig.UseTLS = types.BoolValue(tls)
+		}
+
+		// Parse recipients from API response
+		if recipientsList, ok := configMap["recipients"].([]interface{}); ok {
+			recipients := make([]string, 0, len(recipientsList))
+			for _, r := range recipientsList {
+				if email, ok := r.(string); ok {
+					recipients = append(recipients, email)
+				}
+			}
+			recipientsListValue, diags := types.ListValueFrom(ctx, types.StringType, recipients)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			data.SMTPConfig.Recipients = recipientsListValue
+
+			// Also set to_email for backward compatibility (first recipient)
+			if len(recipients) > 0 && data.SMTPConfig.ToEmail.IsNull() {
+				data.SMTPConfig.ToEmail = types.StringValue(recipients[0])
+			}
+		} else {
+			// Set empty list if not present
+			data.SMTPConfig.Recipients = types.ListNull(types.StringType)
+		}
+
+		// Set computed defaults for fields not returned by API
+		if data.SMTPConfig.FromName.IsNull() {
+			data.SMTPConfig.FromName = types.StringValue("Chainlaunch Notifications")
+		}
+		if data.SMTPConfig.ToEmail.IsNull() {
+			data.SMTPConfig.ToEmail = types.StringValue("")
+		}
+		if data.SMTPConfig.SkipTLSVerify.IsNull() {
+			data.SMTPConfig.SkipTLSVerify = types.BoolValue(false)
+		}
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -361,20 +457,18 @@ func (r *NotificationProviderResource) Update(ctx context.Context, req resource.
 		return
 	}
 
-	// Preserve created_at from state
+	// Preserve computed fields from state
+	data.ID = state.ID
 	data.CreatedAt = state.CreatedAt
 
 	// Build config based on type
 	var config map[string]interface{}
 	if data.Type.ValueString() == "SMTP" && data.SMTPConfig != nil {
 		config = map[string]interface{}{
-			"host":            data.SMTPConfig.Host.ValueString(),
-			"port":            data.SMTPConfig.Port.ValueInt64(),
-			"from_email":      data.SMTPConfig.FromEmail.ValueString(),
-			"from_name":       data.SMTPConfig.FromName.ValueString(),
-			"to_email":        data.SMTPConfig.ToEmail.ValueString(),
-			"use_tls":         data.SMTPConfig.UseTLS.ValueBool(),
-			"skip_tls_verify": data.SMTPConfig.SkipTLSVerify.ValueBool(),
+			"host": data.SMTPConfig.Host.ValueString(),
+			"port": data.SMTPConfig.Port.ValueInt64(),
+			"from": data.SMTPConfig.FromEmail.ValueString(), // API expects "from", not "from_email"
+			"tls":  data.SMTPConfig.UseTLS.ValueBool(),      // API expects "tls", not "use_tls"
 		}
 
 		if !data.SMTPConfig.Username.IsNull() {
@@ -383,23 +477,36 @@ func (r *NotificationProviderResource) Update(ctx context.Context, req resource.
 		if !data.SMTPConfig.Password.IsNull() {
 			config["password"] = data.SMTPConfig.Password.ValueString()
 		}
+
+		// Add recipients list to config
+		if !data.SMTPConfig.Recipients.IsNull() && !data.SMTPConfig.Recipients.IsUnknown() {
+			var recipients []string
+			resp.Diagnostics.Append(data.SMTPConfig.Recipients.ElementsAs(ctx, &recipients, false)...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+			config["recipients"] = recipients
+		} else if !data.SMTPConfig.ToEmail.IsNull() {
+			// Fallback to to_email for backward compatibility
+			config["recipients"] = []string{data.SMTPConfig.ToEmail.ValueString()}
+		}
 	} else {
 		resp.Diagnostics.AddError("Invalid Configuration", "SMTP config is required when type is 'SMTP'")
 		return
 	}
 
 	updateReq := map[string]interface{}{
-		"name":                  data.Name.ValueString(),
-		"type":                  data.Type.ValueString(),
-		"is_default":            data.IsDefault.ValueBool(),
-		"notify_backup_success": data.NotifyBackupSuccess.ValueBool(),
-		"notify_backup_failure": data.NotifyBackupFailure.ValueBool(),
-		"notify_node_downtime":  data.NotifyNodeDowntime.ValueBool(),
-		"notify_s3_conn_issue":  data.NotifyS3ConnIssue.ValueBool(),
-		"config":                config,
+		"name":                data.Name.ValueString(),
+		"type":                data.Type.ValueString(),
+		"isDefault":           data.IsDefault.ValueBool(),           // camelCase
+		"notifyBackupSuccess": data.NotifyBackupSuccess.ValueBool(), // camelCase
+		"notifyBackupFailure": data.NotifyBackupFailure.ValueBool(), // camelCase
+		"notifyNodeDowntime":  data.NotifyNodeDowntime.ValueBool(),  // camelCase
+		"notifyS3ConnIssue":   data.NotifyS3ConnIssue.ValueBool(),   // camelCase
+		"config":              config,
 	}
 
-	body, err := r.client.DoRequest("PUT", fmt.Sprintf("/notifications/providers/%s", data.ID.ValueString()), updateReq)
+	body, err := r.client.DoRequest("PUT", fmt.Sprintf("/notifications/providers/%s", state.ID.ValueString()), updateReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update notification provider, got error: %s", err))
 		return
@@ -411,17 +518,38 @@ func (r *NotificationProviderResource) Update(ctx context.Context, req resource.
 		return
 	}
 
-	// Update computed fields
+	// Update computed fields - always set to known values
 	if lastTestAt, ok := providerResp["lastTestAt"].(string); ok && lastTestAt != "" {
 		data.LastTestAt = types.StringValue(lastTestAt)
+	} else {
+		// Preserve from state or set to empty
+		if !state.LastTestAt.IsNull() {
+			data.LastTestAt = state.LastTestAt
+		} else {
+			data.LastTestAt = types.StringValue("")
+		}
 	}
 
 	if lastTestStatus, ok := providerResp["lastTestStatus"].(string); ok && lastTestStatus != "" {
 		data.LastTestStatus = types.StringValue(lastTestStatus)
+	} else {
+		// Preserve from state or set to empty
+		if !state.LastTestStatus.IsNull() {
+			data.LastTestStatus = state.LastTestStatus
+		} else {
+			data.LastTestStatus = types.StringValue("")
+		}
 	}
 
 	if lastTestMessage, ok := providerResp["lastTestMessage"].(string); ok && lastTestMessage != "" {
 		data.LastTestMessage = types.StringValue(lastTestMessage)
+	} else {
+		// Preserve from state or set to empty
+		if !state.LastTestMessage.IsNull() {
+			data.LastTestMessage = state.LastTestMessage
+		} else {
+			data.LastTestMessage = types.StringValue("")
+		}
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

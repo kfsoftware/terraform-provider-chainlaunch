@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Terraform Provider for Chainlaunch, a Hyperledger Fabric and Hyperledger Besu blockchain management platform. The provider enables Infrastructure-as-Code management of:
+This is a Terraform Provider for Chainlaunch, a Hyperledger Fabric and Hyperledger Besu blockchain management platform.
+
+**Website**: https://chainlaunch.dev
+
+The provider enables Infrastructure-as-Code management of:
 - Organizations (Fabric MSP organizations)
 - Nodes (Fabric Peers, Orderers, CAs; Besu Nodes)
 - Networks (Fabric Channels, Besu Networks)
@@ -51,13 +55,27 @@ make test-coverage
 ```hcl
 provider_installation {
   dev_overrides {
-    "registry.terraform.io/kfsoftware/chainlaunch" = "/absolute/path/to/terraform-provider-chainlaunch"
+    "kfsoftware/chainlaunch" = "/absolute/path/to/terraform-provider-chainlaunch"
   }
   direct {}
 }
 ```
 
-3. **Run Terraform commands** - Terraform will use your local binary instead of downloading from registry
+3. **Initialize examples for testing**: Use the helper script to clean up lock files and init:
+```bash
+# From the root of the repo
+./examples/init-dev.sh fabric-network-complete
+
+# Or manually for any example
+cd examples/fabric-network-complete
+rm -f .terraform.lock.hcl
+rm -rf .terraform
+terraform init
+```
+
+4. **Run Terraform commands** - Terraform will use your local binary instead of downloading from registry
+
+**Important**: When using dev overrides, you must remove `.terraform.lock.hcl` files from example directories, as they reference the registry version and will conflict with your local build.
 
 ## Architecture Overview
 
@@ -99,6 +117,12 @@ provider_installation {
 - `resource_notification_provider.go` - Email notification providers (SMTP) for alerts
 - `resource_plugin.go` - Plugin definitions from YAML files
 - `resource_plugin_deployment.go` - Deploy plugins with parameters
+- `resource_chainlaunch_install_ssh.go` - Install Chainlaunch on remote Linux servers via SSH
+- `resource_node_invitation.go` - Generate node invitations for peer-to-peer connections
+- `resource_node_accept_invitation.go` - Accept node invitations from remote instances
+- `resource_external_nodes_sync.go` - Sync external nodes from a specific peer
+- `resource_sync_all_external_nodes.go` - Automatically sync external nodes from ALL connected peers
+- `resource_network_share.go` - Share Fabric or Besu networks with connected peer nodes
 
 **Data Sources** (`internal/provider/data_source_*.go`):
 - Read-only access to existing resources
@@ -113,6 +137,11 @@ provider_installation {
 - `data_source_besu_node.go` - Query Besu nodes by ID
 - `data_source_fabric_chaincode.go` - Query chaincode by name and network
 - `data_source_plugin.go` - Query plugin information and deployment status
+- `data_source_external_nodes.go` - Query ALL external nodes (peers, orderers, Besu) in a single API call
+- `data_source_external_fabric_peers.go` - Query external Fabric peers only
+- `data_source_external_fabric_orderers.go` - Query external Fabric orderers only
+- `data_source_external_fabric_organizations.go` - Query external Fabric organizations only
+- `data_source_external_besu_nodes.go` - Query external Besu nodes only
 
 ### Key Implementation Patterns
 
@@ -673,6 +702,252 @@ The deployment resource tracks:
 - Deployment waits up to 60 seconds for services to reach ready state
 - API: `POST /plugins`, `PUT /plugins/{name}`, `DELETE /plugins/{name}`, `POST /plugins/{name}/deploy`, `POST /plugins/{name}/stop`
 
+### SSH Installation
+
+The provider supports installing Chainlaunch on remote Linux servers via SSH using the **`chainlaunch_install_ssh`** resource. This is particularly useful for AWS EC2, DigitalOcean, or other cloud VPS deployments.
+
+**Key Features**:
+- Automatic Chainlaunch binary download and installation
+- Systemd service creation and management
+- SSH authentication via password or private key
+- Version management (specific versions or "latest")
+- Environment variable configuration
+- Service status monitoring
+
+**Example - AWS EC2 Integration**:
+```hcl
+# Provision EC2 instance
+resource "aws_instance" "chainlaunch_server" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t3.medium"
+  key_name      = "my-key"
+}
+
+# Install Chainlaunch via SSH
+resource "chainlaunch_install_ssh" "server" {
+  host        = aws_instance.chainlaunch_server.public_ip
+  user        = "ubuntu"
+  private_key = file("~/.ssh/my-key.pem")
+
+  version   = "latest"
+  port_8100 = 8100
+
+  environment = {
+    LOG_LEVEL = "info"
+  }
+
+  depends_on = [aws_instance.chainlaunch_server]
+}
+
+# Use the installed instance
+provider "chainlaunch" {
+  url      = chainlaunch_install_ssh.server.chainlaunch_url
+  username = "admin"
+  password = "admin123"
+}
+```
+
+**Prerequisites**:
+- Target machine must have: Linux with systemd, Docker, sudo access, curl
+- SSH access configured (password or key-based)
+
+**Lifecycle**:
+- **Create**: Downloads binary, creates systemd service, starts service
+- **Read**: Checks service status and installed version
+- **Update**: Supports version upgrades by stopping service, reinstalling, and restarting
+- **Delete**: Stops and disables service, removes systemd file (keeps installation files for safety)
+
+**Important Notes**:
+- Uses `golang.org/x/crypto/ssh` for SSH connections
+- Systemd service runs as root (required for Docker access)
+- Installation files preserved on deletion for data safety
+- Service logs available via `journalctl -u chainlaunch`
+- See `examples/aws-fabric-nodes/` for complete AWS deployment example
+
+### Network Sharing
+
+The provider supports sharing Fabric and Besu networks with connected Chainlaunch peer nodes using the **`chainlaunch_network_share`** resource. This is a **Pro-only feature** that enables multi-instance collaboration.
+
+**Use Cases**:
+- Share Fabric channel configuration with partner organizations
+- Distribute Besu genesis configuration to consortium members
+- Enable cross-instance network participation
+
+**Prerequisites**:
+- Pro features enabled on both sharing and receiving instances
+- Peer nodes connected via `chainlaunch_node_invitation` and `chainlaunch_node_accept_invitation`
+- Network created locally (Fabric or Besu)
+
+**Resource** (`chainlaunch_network_share`):
+- Shares network configuration (genesis block, channel config) with peer nodes
+- Required fields: `network_id`, `network_type` ("fabric" or "besu"), `recipients` (list of peer node connection IDs)
+- Optional: `metadata` (key-value pairs for additional information)
+- Computed: `status`, `shared_by`, `shared_by_node`, `created_at`
+- API: `POST /pro/sharing/network` (Fabric), `POST /pro/sharing/besu-network` (Besu)
+
+**Workflow**:
+```
+Instance A: Create Network → Share with Peer Node IDs →
+Instance B: Receive Share → Accept/Reject → Import Network
+```
+
+**Example - Share Fabric Network**:
+```hcl
+# Create network locally
+resource "chainlaunch_fabric_network" "mychannel" {
+  name = "shared-channel"
+  # ... configuration
+}
+
+# Share with connected peers
+resource "chainlaunch_network_share" "share_with_partners" {
+  network_id   = chainlaunch_fabric_network.mychannel.id
+  network_type = "fabric"
+
+  # Connection IDs of peer Chainlaunch instances
+  recipients = [
+    "2",  # Org2's instance
+    "3",  # Org3's instance
+  ]
+
+  metadata = {
+    purpose = "supply-chain-collaboration"
+    version = "1.0"
+  }
+}
+```
+
+**Example - Share Besu Network**:
+```hcl
+resource "chainlaunch_besu_network" "consortium" {
+  name         = "besu-consortium"
+  chain_id     = 1337
+  consensus    = "qbft"
+  # ... configuration
+}
+
+resource "chainlaunch_network_share" "share_besu" {
+  network_id   = chainlaunch_besu_network.consortium.id
+  network_type = "besu"
+  recipients   = ["4", "5"]  # Partner connection IDs
+}
+```
+
+**Finding Connection IDs**:
+- Via UI: Pro → Connections
+- Via API: `GET /node/connected-peers`
+- From invitation acceptance
+
+**Lifecycle**:
+- **Create**: Sends network config to recipients; recipients receive notification
+- **Update**: Changing recipients re-shares; `network_id`/`network_type` changes require replacement
+- **Delete**: Removes from Terraform state; does NOT revoke share on recipient's end
+
+**Important Notes**:
+- Recipients accept/reject shares via Pro UI or API (`POST /pro/shared-networks/{shareId}/accept`)
+- Once accepted, recipients can join nodes to the shared network
+- Network shares are ephemeral - once sent, they're on the recipient's end
+- Both instances must have Pro licensing enabled
+- Connection IDs are different from node IDs - they're assigned when accepting invitations
+- See `examples/network-share/` for complete multi-instance example
+
+### External Nodes Query
+
+The provider includes a comprehensive data source to query all external nodes (Fabric peers, orderers, and Besu nodes) that have been synced from connected Chainlaunch instances.
+
+**Data Source** (`chainlaunch_external_nodes`):
+- Retrieves all external node types in a single API call
+- More efficient than using separate data sources for each node type
+- Returns: `fabric_peers`, `fabric_orderers`, `besu_nodes` arrays
+- API: `GET /external-nodes`
+
+**Use After Syncing**:
+Always use this data source after running `chainlaunch_sync_all_external_nodes` or `chainlaunch_external_nodes_sync`:
+
+```hcl
+# Sync external nodes from all connected peers
+resource "chainlaunch_sync_all_external_nodes" "sync" {}
+
+# Query all external nodes
+data "chainlaunch_external_nodes" "all" {
+  depends_on = [chainlaunch_sync_all_external_nodes.sync]
+}
+
+# Access node data
+output "all_peers" {
+  value = data.chainlaunch_external_nodes.all.fabric_peers
+}
+```
+
+**Node Information Returned**:
+
+*Fabric Peers*:
+- `id`, `external_node_id`, `name`, `msp_id`
+- `external_endpoint` - Address (e.g., "peer0.org1.example.com:7051")
+- `version` - Fabric version
+- `sign_certificate` - PEM-encoded signing certificate
+- `tls_certificate` - PEM-encoded TLS certificate
+
+*Fabric Orderers*:
+- Same fields as peers
+- `external_endpoint` - Address (e.g., "orderer0.org1.example.com:7050")
+
+*Besu Nodes*:
+- `id`, `external_node_id`, `name`, `version`
+- `enode_url` - Enode URL for P2P connections
+- `p2p_host`, `p2p_port` - P2P configuration
+- `metrics_enabled`, `metrics_port` - Prometheus metrics config
+
+**Common Patterns**:
+
+*Filter by MSP ID*:
+```hcl
+locals {
+  org1_peers = [
+    for peer in data.chainlaunch_external_nodes.all.fabric_peers :
+    peer if peer.msp_id == "Org1MSP"
+  ]
+}
+```
+
+*Get all peer endpoints*:
+```hcl
+locals {
+  peer_endpoints = [
+    for peer in data.chainlaunch_external_nodes.all.fabric_peers :
+    peer.external_endpoint
+  ]
+}
+```
+
+*Count nodes by organization*:
+```hcl
+output "nodes_by_org" {
+  value = {
+    for msp_id in distinct([
+      for peer in data.chainlaunch_external_nodes.all.fabric_peers : peer.msp_id
+    ]) : msp_id => length([
+      for peer in data.chainlaunch_external_nodes.all.fabric_peers :
+      peer if peer.msp_id == msp_id
+    ])
+  }
+}
+```
+
+**Benefits vs Individual Data Sources**:
+- ✅ Single API call (faster)
+- ✅ Consistent data snapshot (all nodes at same point in time)
+- ✅ Simpler configuration
+- ✅ Easier to maintain
+
+**Individual Data Sources** (legacy, still available):
+- `chainlaunch_external_fabric_peers` - Fabric peers only
+- `chainlaunch_external_fabric_orderers` - Fabric orderers only
+- `chainlaunch_external_fabric_organizations` - Fabric organizations only
+- `chainlaunch_external_besu_nodes` - Besu nodes only
+
+Use the comprehensive `chainlaunch_external_nodes` data source for new implementations. See `examples/external-nodes/` for complete examples.
+
 ## Testing
 
 ### Test Organization
@@ -723,6 +998,8 @@ Examples are located in `examples/` and demonstrate:
 - `plugin-definition/` - Register a plugin from YAML specification (Part 1 of plugin workflow)
 - `plugin-deployment/` - Deploy a registered plugin with parameters (Part 2 of plugin workflow)
 - `plugin-hlf-api/` - Complete end-to-end: register + deploy Hyperledger Fabric REST API plugin
+- `network-share/` - Share Fabric or Besu networks with connected peer nodes (Pro-only feature)
+- `external-nodes/` - Query all external nodes (peers, orderers, Besu) from connected instances in a single API call
 
 Each example has a comprehensive README with configuration details and troubleshooting.
 

@@ -2,6 +2,8 @@
 
 This Terraform provider allows you to manage Hyperledger Fabric resources in Chainlaunch, including organizations, nodes, networks, and key providers.
 
+**Website**: https://chainlaunch.dev
+
 ## Requirements
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 1.0
@@ -427,4 +429,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-For issues, questions, or contributions, please open an issue in the GitHub repository.
+- **Website**: https://chainlaunch.dev
+- **Issues**: For issues, questions, or contributions, please open an issue in the GitHub repository.

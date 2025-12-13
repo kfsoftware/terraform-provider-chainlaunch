@@ -65,7 +65,7 @@ ListOrganizationKeysOK describes a response with status code 200, with default h
 OK
 */
 type ListOrganizationKeysOK struct {
-	Payload *models.HandlerListKeysResponse
+	Payload []*models.ServiceOrganizationKeyDTO
 }
 
 // IsSuccess returns true when this list organization keys o k response has a 2xx status code
@@ -108,16 +108,14 @@ func (o *ListOrganizationKeysOK) String() string {
 	return fmt.Sprintf("[GET /organizations/{id}/keys][%d] listOrganizationKeysOK %s", 200, payload)
 }
 
-func (o *ListOrganizationKeysOK) GetPayload() *models.HandlerListKeysResponse {
+func (o *ListOrganizationKeysOK) GetPayload() []*models.ServiceOrganizationKeyDTO {
 	return o.Payload
 }
 
 func (o *ListOrganizationKeysOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(models.HandlerListKeysResponse)
-
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
+	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

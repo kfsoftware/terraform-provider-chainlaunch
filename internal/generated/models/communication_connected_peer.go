@@ -20,6 +20,9 @@ type CommunicationConnectedPeer struct {
 	// analytics enabled
 	AnalyticsEnabled bool `json:"analytics_enabled,omitempty"`
 
+	// connected at
+	ConnectedAt string `json:"connected_at,omitempty"`
+
 	// id
 	ID int64 `json:"id,omitempty"`
 

@@ -676,6 +676,182 @@ definitions:
       validateCommand:
         type: string
     type: object
+  certificates.CertificateAlertConfigRequest:
+    properties:
+      auto_renewal_days_before_expiry:
+        type: integer
+      critical_days_before_expiry:
+        type: integer
+      enable_auto_renewal:
+        type: boolean
+      enable_email_notification:
+        type: boolean
+      enable_slack_notification:
+        type: boolean
+      enable_webhook_notification:
+        type: boolean
+      fabric_organization_id:
+        type: integer
+      is_enabled:
+        type: boolean
+      node_id:
+        type: string
+      warning_days_before_expiry:
+        type: integer
+      webhook_url:
+        type: string
+    type: object
+  certificates.CertificateAlertConfigResponse:
+    properties:
+      auto_renewal_days_before_expiry:
+        type: integer
+      created_at:
+        type: string
+      critical_days_before_expiry:
+        type: integer
+      enable_auto_renewal:
+        type: boolean
+      enable_email_notification:
+        type: boolean
+      enable_slack_notification:
+        type: boolean
+      enable_webhook_notification:
+        type: boolean
+      fabric_organization_id:
+        type: integer
+      id:
+        type: integer
+      is_enabled:
+        type: boolean
+      node_id:
+        type: string
+      updated_at:
+        type: string
+      warning_days_before_expiry:
+        type: integer
+      webhook_url:
+        type: string
+    type: object
+  certificates.CertificateInfo:
+    properties:
+      days_remaining:
+        type: integer
+      expires_at:
+        type: string
+      key_id:
+        type: integer
+      key_name:
+        type: string
+      needs_renewal:
+        type: boolean
+      status:
+        description: '"healthy", "warning", "critical", "expired"'
+        type: string
+      type:
+        description: '"sign" or "tls"'
+        type: string
+    type: object
+  certificates.CheckCertificatesResponse:
+    properties:
+      all_nodes:
+        items:
+          $ref: '#/definitions/certificates.NodeRenewalInfo'
+        type: array
+      checked_at:
+        type: string
+      critical_count:
+        type: integer
+      expired_count:
+        type: integer
+      healthy_count:
+        type: integer
+      message:
+        type: string
+      nodes_to_renew:
+        items:
+          $ref: '#/definitions/certificates.NodeRenewalInfo'
+        type: array
+      total_certificates_checked:
+        type: integer
+      total_nodes_checked:
+        type: integer
+      warning_count:
+        type: integer
+    type: object
+  certificates.GetNodesCertificatesResponse:
+    properties:
+      fetched_at:
+        type: string
+      message:
+        type: string
+      nodes:
+        items:
+          $ref: '#/definitions/certificates.NodeCertificateStatusResponse'
+        type: array
+      total_certificates:
+        type: integer
+      total_critical:
+        type: integer
+      total_expired:
+        type: integer
+      total_healthy:
+        type: integer
+      total_nodes:
+        type: integer
+      total_warning:
+        type: integer
+    type: object
+  certificates.NodeCertificateStatusResponse:
+    properties:
+      certificates:
+        items:
+          $ref: '#/definitions/certificates.CertificateInfo'
+        type: array
+      critical_count:
+        type: integer
+      expired_count:
+        type: integer
+      healthy_count:
+        type: integer
+      next_renewal_trigger:
+        description: When renewal will be triggered
+        type: string
+      node_id:
+        type: integer
+      node_name:
+        type: string
+      node_type:
+        description: e.g., "fabric-peer", "fabric-orderer"
+        type: string
+      warning_count:
+        type: integer
+    type: object
+  certificates.NodeRenewalInfo:
+    properties:
+      certificates:
+        items:
+          $ref: '#/definitions/certificates.CertificateInfo'
+        type: array
+      critical_count:
+        type: integer
+      expired_count:
+        type: integer
+      healthy_count:
+        type: integer
+      next_renewal_trigger:
+        description: When renewal will be triggered, if applicable
+        type: string
+      node_id:
+        type: integer
+      node_name:
+        type: string
+      renewal_count:
+        type: integer
+      renewal_triggered:
+        type: boolean
+      warning_count:
+        type: integer
+    type: object
   chaincode.Gateway:
     type: object
   chaincode.Peer:
@@ -1207,6 +1383,8 @@ definitions:
     properties:
       analytics_enabled:
         type: boolean
+      connected_at:
+        type: string
       id:
         type: integer
       metrics_federation:
@@ -1333,6 +1511,9 @@ definitions:
   communication.NodeAcceptInvitationResponse:
     properties:
       error:
+        type: string
+      message:
+        description: Optional message with sync details
         type: string
       success:
         type: boolean
@@ -1952,6 +2133,21 @@ definitions:
     type: object
   handler.CreateIdentityRequest:
     properties:
+      certType:
+        description: |-
+          Optional: Which type of certificate to create: "sign" or "tls"
+          If not provided, defaults to "sign" (creates a signing certificate using the sign CA)
+          "sign" = create signing certificate signed by organization's sign CA
+          "tls" = create TLS certificate signed by organization's TLS CA
+        enum:
+        - sign
+        - tls
+        type: string
+      certValidFor:
+        description: |-
+          Optional: Certificate validity (Go duration format, e.g., "8760h" for 1 year)
+          If not provided, defaults to 1 year
+        type: string
       description:
         description: 'Optional: Description for the identity'
         type: string
@@ -1998,35 +2194,15 @@ definitions:
     - algorithm
     - name
     type: object
-  handler.CreateKeyRequest:
-    properties:
-      description:
-        example: New admin key for organization
-        type: string
-      dnsNames:
-        example:
-        - admin.example.com
-        items:
-          type: string
-        type: array
-      ipAddresses:
-        example:
-        - 192.168.1.100
-        items:
-          type: string
-        type: array
-      name:
-        example: new-admin-key
-        type: string
-      role:
-        example: admin
-        type: string
-    required:
-    - name
-    - role
-    type: object
   handler.CreateOrganizationRequest:
     properties:
+      caCertValidFor:
+        description: Certificate validity configuration (Go duration format)
+        type: string
+      certValidFor:
+        description: 'Validity for admin/client/peer certificates (e.g., "8760h" for
+          1 year). Default: 8760h (1 year)'
+        type: string
       country:
         description: CA certificate properties
         items:
@@ -2113,6 +2289,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/handler.AWSKMSImportData'
         description: 'For SourceType="aws_kms": AWS KMS configuration'
+      createDefaultIdentities:
+        description: 'Auto-create default identities (admin sign+tls, client sign+tls)
+          after import (default: true)'
+        type: boolean
       description:
         type: string
       mspId:
@@ -2142,51 +2322,6 @@ definitions:
     - providerId
     - sourceType
     type: object
-  handler.KeyResponse:
-    properties:
-      algorithm:
-        type: string
-      certificate:
-        type: string
-      createdAt:
-        type: string
-      description:
-        type: string
-      ethereumAddress:
-        type: string
-      expiresAt:
-        type: string
-      id:
-        type: integer
-      lastRotatedAt:
-        type: string
-      name:
-        type: string
-      provider:
-        properties:
-          id:
-            type: integer
-          name:
-            type: string
-        type: object
-      publicKey:
-        type: string
-      sha1Fingerprint:
-        type: string
-      sha256Fingerprint:
-        type: string
-      signingKeyId:
-        type: integer
-      status:
-        type: string
-    type: object
-  handler.ListKeysResponse:
-    properties:
-      keys:
-        additionalProperties:
-          $ref: '#/definitions/handler.KeyResponse'
-        type: object
-    type: object
   handler.OrganizationResponse:
     properties:
       adminSignKeyId:
@@ -2207,10 +2342,16 @@ definitions:
         type: integer
       providerName:
         type: string
+      signCAKeyId:
+        description: CA key for signing certificates
+        type: integer
       signCertificate:
         type: string
       signPublicKey:
         type: string
+      tlsCAKeyId:
+        description: CA key for TLS certificates
+        type: integer
       tlsCertificate:
         type: string
       tlsPublicKey:
@@ -2257,37 +2398,72 @@ definitions:
     - signCaCert
     - tlsCaCert
     type: object
-  handler.RenewCertificateRequest:
+  handler.RenewCertificateHandlerRequest:
     properties:
-      caType:
-        example: sign
+      commonName:
+        example: example.com
         type: string
+      country:
+        example:
+        - US
+        items:
+          type: string
+        type: array
       dnsNames:
         example:
-        - admin.example.com
+        - www.example.com
         items:
           type: string
         type: array
-      ipAddresses:
+      emailAddresses:
         example:
-        - 192.168.1.100
+        - admin@example.com
         items:
           type: string
         type: array
-      keyId:
-        example: 123
-        type: integer
-      role:
-        example: admin
-        type: string
+      locality:
+        example:
+        - San Francisco
+        items:
+          type: string
+        type: array
+      organization:
+        example:
+        - Example Corp
+        items:
+          type: string
+        type: array
+      organizationalUnit:
+        example:
+        - Engineering
+        items:
+          type: string
+        type: array
+      postalCode:
+        example:
+        - "94105"
+        items:
+          type: string
+        type: array
+      province:
+        example:
+        - California
+        items:
+          type: string
+        type: array
+      streetAddress:
+        example:
+        - 123 Main St
+        items:
+          type: string
+        type: array
       validFor:
-        description: Duration in Go format (e.g., "8760h" for 1 year)
-        example: 8760h
-        type: string
+        allOf:
+        - $ref: '#/definitions/time.Duration'
+        description: Duration string like "8760h" (1 year)
     required:
-    - caType
-    - keyId
-    - role
+    - commonName
+    - validFor
     type: object
   handler.RevokeCertificateByPEMRequest:
     properties:
@@ -2383,9 +2559,51 @@ definitions:
         type: integer
       status:
         type: string
+      vaultPath:
+        description: Vault secret path if applicable (Vault provider)
+        type: string
       wasExported:
         description: Was private key exported (or generated locally)
         type: boolean
+    type: object
+  handler.TunePKIMountRequest:
+    properties:
+      defaultCaCertTtl:
+        description: 10 years default for CA certs
+        example: 87600h
+        type: string
+      defaultCertTtl:
+        description: 1 year default for regular certs
+        example: 8760h
+        type: string
+      defaultLeaseTtl:
+        description: 'Deprecated: use DefaultCertTtl'
+        example: 8760h
+        type: string
+      maxCaCertTtl:
+        description: 10 years max for CA certs
+        example: 87600h
+        type: string
+      maxCertTtl:
+        description: 1 year max for regular certs
+        example: 8760h
+        type: string
+      maxLeaseTtl:
+        description: 'Deprecated: use MaxCaCertTtl'
+        example: 87600h
+        type: string
+    type: object
+  handler.UpdateOrganizationKeysRequest:
+    properties:
+      adminSignKeyId:
+        description: 'Optional: Set admin sign key ID'
+        type: integer
+      adminTlsKeyId:
+        description: 'Optional: Set admin TLS key ID'
+        type: integer
+      clientSignKeyId:
+        description: 'Optional: Set client sign key ID'
+        type: integer
     type: object
   handler.UpdateOrganizationRequest:
     properties:
@@ -3018,6 +3236,11 @@ definitions:
           AWS region (required for S3 type)
           @Example "us-east-1"
         type: string
+      resticPassword:
+        description: |-
+          Restic repository password (optional - will be auto-generated if not provided)
+          @Example "my-secure-password-123"
+        type: string
       secretKey:
         description: AWS secret key (required for S3 type)
         type: string
@@ -3102,12 +3325,12 @@ definitions:
             type: string
           initialValidatorsKeyIds:
             description: |-
-              @Description List of initial validator key IDs
+              @Description List of initial validator key IDs (minimum 4 required for QBFT consensus and Byzantine Fault Tolerance)
               @Required
-              @MinItems 1
+              @MinItems 4
             items:
               type: integer
-            minItems: 1
+            minItems: 4
             type: array
           mixHash:
             description: '@Description Optional mix hash value'
@@ -3196,6 +3419,8 @@ definitions:
       notifyBackupFailure:
         type: boolean
       notifyBackupSuccess:
+        type: boolean
+      notifyDiskSpaceWarning:
         type: boolean
       notifyNodeDowntime:
         type: boolean
@@ -3528,6 +3753,11 @@ definitions:
     type: object
   http.OrganizationConfig:
     properties:
+      externalNodeIds:
+        description: External node IDs from external_node_fabric_orderer table
+        items:
+          type: integer
+        type: array
       id:
         type: integer
       nodeIds:
@@ -3585,6 +3815,8 @@ definitions:
       notifyBackupFailure:
         type: boolean
       notifyBackupSuccess:
+        type: boolean
+      notifyDiskSpaceWarning:
         type: boolean
       notifyNodeDowntime:
         type: boolean
@@ -3806,6 +4038,8 @@ definitions:
       name:
         type: string
       region:
+        type: string
+      resticPassword:
         type: string
       secretKey:
         type: string
@@ -4131,6 +4365,8 @@ definitions:
         type: boolean
       notifyBackupSuccess:
         type: boolean
+      notifyDiskSpaceWarning:
+        type: boolean
       notifyNodeDowntime:
         type: boolean
       notifyS3ConnIssue:
@@ -4211,6 +4447,9 @@ definitions:
         type: integer
       name:
         type: string
+      path:
+        description: Mount path for Vault or key alias prefix for AWS KMS
+        type: string
       type:
         allOf:
         - $ref: '#/definitions/models.KeyProviderType'
@@ -4284,6 +4523,9 @@ definitions:
       signingKeyID:
         type: integer
       status:
+        type: string
+      vaultPath:
+        description: Vault secret path if applicable (Vault provider)
         type: string
       wasExported:
         description: Was private key exported (or generated locally)
@@ -4474,9 +4716,11 @@ definitions:
   notifications.ProviderType:
     enum:
     - SMTP
+    - WEBHOOK
     type: string
     x-enum-varnames:
     - ProviderTypeSMTP
+    - ProviderTypeWebhook
   plugin.AvailablePluginsResponse:
     properties:
       last_updated:
@@ -5383,6 +5627,33 @@ definitions:
       error:
         type: string
     type: object
+  response.NodeCreationErrorDetails:
+    properties:
+      node:
+        description: |-
+          Node contains the partial node data (only set if NodeCreated is true)
+          This can be of type interface{} to accept any node type (FabricPeer, FabricOrderer, BesuNode)
+      node_created:
+        description: NodeCreated indicates whether the node was created in the database
+        type: boolean
+      node_id:
+        description: NodeID is the database ID of the node (only set if NodeCreated
+          is true)
+        type: integer
+      stage:
+        description: Stage indicates at which stage the failure occurred (validation,
+          db_insert, initialization, deployment_config, startup, connectivity)
+        type: string
+    type: object
+  response.NodeCreationErrorResponse:
+    properties:
+      details:
+        $ref: '#/definitions/response.NodeCreationErrorDetails'
+      error:
+        type: string
+      message:
+        type: string
+    type: object
   response.Response:
     properties:
       data: {}
@@ -5889,6 +6160,37 @@ definitions:
       node_id:
         type: string
       read_at:
+        type: string
+    type: object
+  service.OrganizationKeyDTO:
+    properties:
+      certificate:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      identityType:
+        type: string
+      keyAlgorithm:
+        type: string
+      keyExpiresAt:
+        type: string
+      keyId:
+        type: integer
+      keyName:
+        type: string
+      keyPurpose:
+        type: string
+      keyStatus:
+        type: string
+      kmsKeyId:
+        type: string
+      organizationId:
+        type: integer
+      publicKey:
+        type: string
+      vaultPath:
         type: string
     type: object
   service.QbftPendingVotes:
@@ -7621,6 +7923,20 @@ paths:
       summary: Get API key logs
       tags:
       - API Keys
+  /api/webhooks/events:
+    get:
+      description: Returns all available webhook event types organized by category
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Map of event categories to event info
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get available webhook events
+      tags:
+      - webhooks
   /audit/logs:
     get:
       consumes:
@@ -8449,6 +8765,282 @@ paths:
       summary: Update a backup target
       tags:
       - Backup Targets
+  /certificates/alert-config:
+    get:
+      description: Retrieves the global certificate alert configuration
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/certificates.CertificateAlertConfigResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BasicAuth: []
+      summary: Get global certificate alert configuration
+      tags:
+      - Certificates
+    post:
+      consumes:
+      - application/json
+      description: Creates or updates the global certificate alert configuration
+      parameters:
+      - description: Alert configuration
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/certificates.CertificateAlertConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/certificates.CertificateAlertConfigResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BasicAuth: []
+      summary: Create or update global certificate alert configuration
+      tags:
+      - Certificates
+    put:
+      consumes:
+      - application/json
+      description: Updates the global certificate alert configuration
+      parameters:
+      - description: Alert configuration
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/certificates.CertificateAlertConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/certificates.CertificateAlertConfigResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BasicAuth: []
+      summary: Update global certificate alert configuration
+      tags:
+      - Certificates
+  /certificates/alert-config/{id}:
+    delete:
+      description: Deletes a certificate alert configuration
+      parameters:
+      - description: Configuration ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BasicAuth: []
+      summary: Delete a certificate alert configuration
+      tags:
+      - Certificates
+  /certificates/alert-config/nodes/{nodeId}:
+    get:
+      description: Retrieves the certificate alert configuration for a specific node
+      parameters:
+      - description: Node ID
+        in: path
+        name: nodeId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/certificates.CertificateAlertConfigResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BasicAuth: []
+      summary: Get node-specific certificate alert configuration
+      tags:
+      - Certificates
+  /certificates/alert-configs:
+    get:
+      description: Lists all certificate alert configurations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/certificates.CertificateAlertConfigResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BasicAuth: []
+      summary: List all certificate alert configurations
+      tags:
+      - Certificates
+  /certificates/check:
+    post:
+      description: Manually triggers an immediate certificate expiration check for
+        all nodes and returns renewal status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/certificates.CheckCertificatesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BasicAuth: []
+      summary: Manually trigger certificate expiration check
+      tags:
+      - Certificates
+  /certificates/nodes:
+    get:
+      description: Returns certificate status and renewal information for all nodes
+        in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/certificates.GetNodesCertificatesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BasicAuth: []
+      summary: Get certificate status for all nodes
+      tags:
+      - Certificates
+  /certificates/renew/{nodeId}:
+    post:
+      description: Manually triggers immediate certificate renewal for a specific
+        node, regardless of expiration thresholds
+      parameters:
+      - description: Node ID
+        in: path
+        name: nodeId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BasicAuth: []
+      summary: Manually trigger certificate renewal for a specific node
+      tags:
+      - Certificates
   /chaincode-projects:
     get:
       description: Get a list of all projects
@@ -10023,6 +10615,86 @@ paths:
       summary: Stop Vault instance
       tags:
       - Key Providers
+  /key-providers/{id}/vault/tune-pki:
+    post:
+      consumes:
+      - application/json
+      description: Configure the PKI mount TTL settings for a Vault provider
+      operationId: tunePKIMount
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: PKI mount tuning parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.TunePKIMountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: PKI mount tuned successfully
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "404":
+          description: Provider not found
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "500":
+          description: Failed to tune PKI mount
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+      security:
+      - BasicAuth: []
+      - CookieAuth: []
+      summary: Tune PKI Mount
+      tags:
+      - Key Providers
+  /key-providers/{id}/vault/unseal:
+    post:
+      consumes:
+      - application/json
+      description: Manually unseal a HashiCorp Vault instance
+      operationId: unsealVault
+      parameters:
+      - description: Provider ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Vault successfully unsealed
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "404":
+          description: Provider not found
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+        "500":
+          description: Failed to unseal
+          schema:
+            $ref: '#/definitions/handler.VaultOperationResponse'
+      security:
+      - BasicAuth: []
+      - CookieAuth: []
+      summary: Unseal Vault
+      tags:
+      - Key Providers
   /keys:
     get:
       consumes:
@@ -10182,6 +10854,56 @@ paths:
       - BasicAuth: []
       - CookieAuth: []
       summary: Get a specific key by ID
+      tags:
+      - Keys
+  /keys/{keyID}/certificate/renew:
+    post:
+      consumes:
+      - application/json
+      description: Renew an existing certificate using the same keypair and CA that
+        was used to generate it
+      operationId: renewCertificate
+      parameters:
+      - description: Key ID to renew certificate for
+        in: path
+        name: keyID
+        required: true
+        type: integer
+      - description: Certificate renewal request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RenewCertificateHandlerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.KeyResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Key not found or key does not have a certificate
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BasicAuth: []
+      - CookieAuth: []
+      summary: Renew a certificate
       tags:
       - Keys
   /keys/{keyID}/sign:
@@ -13457,9 +14179,10 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal server error
+          description: Node creation failed (may include partial success details with
+            node_id and stage)
           schema:
-            $ref: '#/definitions/response.ErrorResponse'
+            $ref: '#/definitions/response.NodeCreationErrorResponse'
       security:
       - BasicAuth: []
       - CookieAuth: []
@@ -16192,10 +16915,61 @@ paths:
       tags:
       - Organizations
   /organizations/{id}/identities:
+    get:
+      consumes:
+      - application/json
+      description: Get all identities (keys) created for an organization, grouped
+        by identity type and key purpose
+      operationId: getOrganizationKeys
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Filter by identity type (admin, client, peer)
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/service.OrganizationKeyDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BasicAuth: []
+      - CookieAuth: []
+      summary: Get all identities (keys) for an organization
+      tags:
+      - Organizations
     post:
       consumes:
       - application/json
-      description: Create a new identity (admin, client, or peer) for a Fabric organization
+      description: 'Create a new identity (admin, client, or peer) for a Fabric organization.
+        By default creates a signing certificate (certType: "sign"), or optionally
+        a TLS certificate (certType: "tls")'
       operationId: createOrganizationIdentity
       parameters:
       - description: Organization ID
@@ -16241,166 +17015,32 @@ paths:
       tags:
       - Organizations
   /organizations/{id}/keys:
-    get:
+    put:
       consumes:
       - application/json
-      description: Get all keys associated with an organization
-      operationId: listOrganizationKeys
+      description: Update the admin TLS/sign and client sign key IDs for a Fabric
+        organization. This allows you to assign specific keys as the organization's
+        admin and client identities.
+      operationId: updateFabricOrganizationKeys
       parameters:
       - description: Organization ID
         in: path
         name: id
         required: true
         type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handler.ListKeysResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BasicAuth: []
-      - CookieAuth: []
-      summary: List all keys for an organization
-      tags:
-      - Organizations
-    post:
-      consumes:
-      - application/json
-      description: Create a new key with a specific role (admin or client) for an
-        organization
-      operationId: createOrganizationKey
-      parameters:
-      - description: Organization ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Key creation request
+      - description: Key IDs to update (all fields are optional)
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handler.CreateKeyRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/handler.KeyResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BasicAuth: []
-      - CookieAuth: []
-      summary: Create a new key for an organization
-      tags:
-      - Organizations
-  /organizations/{id}/keys/{keyId}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a key and its associated certificate
-      operationId: deleteOrganizationKey
-      parameters:
-      - description: Organization ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Key ID
-        in: path
-        name: keyId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BasicAuth: []
-      - CookieAuth: []
-      summary: Delete a key
-      tags:
-      - Organizations
-    get:
-      consumes:
-      - application/json
-      description: Get a specific key by its ID
-      operationId: getOrganizationKey
-      parameters:
-      - description: Organization ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Key ID
-        in: path
-        name: keyId
-        required: true
-        type: integer
+          $ref: '#/definitions/handler.UpdateOrganizationKeysRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.KeyResponse'
+            $ref: '#/definitions/handler.OrganizationResponse'
         "400":
           description: Bad Request
           schema:
@@ -16422,56 +17062,7 @@ paths:
       security:
       - BasicAuth: []
       - CookieAuth: []
-      summary: Get a specific key by ID
-      tags:
-      - Organizations
-  /organizations/{id}/keys/renew:
-    post:
-      consumes:
-      - application/json
-      description: Renew a certificate for a specific key in an organization
-      operationId: renewOrganizationCertificate
-      parameters:
-      - description: Organization ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Certificate renewal request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.RenewCertificateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handler.KeyResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BasicAuth: []
-      - CookieAuth: []
-      summary: Renew a certificate for a key
+      summary: Update organization admin/client key IDs
       tags:
       - Organizations
   /organizations/{id}/revoked-certificates:
@@ -20799,6 +21390,8 @@ tags:
   name: Authentication
 - description: API key management and authentication
   name: API Keys
+- description: Certificate expiration monitoring and renewal management
+  name: Certificates
 - description: Backup schedule configuration and management
   name: Backup Schedules
 - description: Backup target location configuration and management

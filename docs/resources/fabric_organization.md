@@ -22,11 +22,23 @@ Manages a Hyperledger Fabric organization in Chainlaunch.
 
 ### Optional
 
+- `ca_cert_valid_for` (String) Certificate validity configuration for CA certificates in Go duration format (e.g., "87600h" for 10 years).
+- `cert_valid_for` (String) Certificate validity for admin/client/peer certificates in Go duration format (e.g., "8760h" for 1 year). Default: 8760h (1 year).
 - `description` (String) A description of the organization.
 - `provider_id` (Number) The ID of the key management provider to use for this organization.
 
 ### Read-Only
 
+- `admin_sign_key_id` (Number) The ID of the admin signing key created during import.
+- `admin_tls_key_id` (Number) The ID of the admin TLS key created during import.
+- `client_sign_key_id` (Number) The ID of the client signing key created during import.
 - `created_at` (String) The timestamp when the organization was created.
 - `id` (String) The unique identifier of the organization.
+- `provider_name` (String) The name of the key provider for this organization.
+- `sign_ca_key_id` (Number) The ID of the signing CA key for this organization.
+- `sign_certificate` (String) The signing CA certificate in PEM format.
+- `sign_public_key` (String) The signing CA public key in PEM format.
+- `tls_ca_key_id` (Number) The ID of the TLS CA key for this organization.
+- `tls_certificate` (String) The TLS CA certificate in PEM format.
+- `tls_public_key` (String) The TLS CA public key in PEM format.
 - `updated_at` (String) The timestamp when the organization was last updated.

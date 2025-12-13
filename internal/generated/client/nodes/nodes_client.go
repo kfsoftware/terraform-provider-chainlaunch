@@ -154,6 +154,8 @@ type ClientService interface {
 
 	GetNode(params *GetNodeParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetNodeOK, error)
 
+	GetNodeBySlug(params *GetNodeBySlugParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetNodeBySlugOK, error)
+
 	GetNodeChaincodes(params *GetNodeChaincodesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetNodeChaincodesOK, error)
 
 	GetNodeChannelHeight(params *GetNodeChannelHeightParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetNodeChannelHeightOK, error)
@@ -1889,6 +1891,52 @@ func (a *Client) GetNode(params *GetNodeParams, authInfo runtime.ClientAuthInfoW
 }
 
 /*
+GetNodeBySlug gets a node by slug
+
+Get a node by its unique slug identifier
+*/
+func (a *Client) GetNodeBySlug(params *GetNodeBySlugParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetNodeBySlugOK, error) {
+	// NOTE: parameters are not validated before sending
+	if params == nil {
+		params = NewGetNodeBySlugParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getNodeBySlug",
+		Method:             "GET",
+		PathPattern:        "/nodes/slug/{slug}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetNodeBySlugReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+
+	// only one success response has to be checked
+	success, ok := result.(*GetNodeBySlugOK)
+	if ok {
+		return success, nil
+	}
+
+	// unexpected success response.
+
+	// no default response is defined.
+	//
+	// safeguard: normally, in the absence of a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getNodeBySlug: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
 GetNodeChaincodes gets node chaincodes
 
 Get installed chaincodes for a Fabric node
@@ -2165,7 +2213,7 @@ func (a *Client) GetNodeHealthStatus(params *GetNodeHealthStatusParams, opts ...
 /*
 ListNodes lists all nodes
 
-Get a paginated list of nodes with optional platform filter
+Get a paginated list of nodes with optional filtering by name, slug, status, platform, type, network, or organization
 */
 func (a *Client) ListNodes(params *ListNodesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListNodesOK, error) {
 	// NOTE: parameters are not validated before sending
