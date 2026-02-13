@@ -181,16 +181,43 @@ func (r *MetricsPrometheusResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	// Preserve all computed fields from state
+	// Preserve ID from state
 	data.ID = state.ID
-	data.Status = state.Status
-	data.StartedAt = state.StartedAt
 
-	// Prometheus requires recreation for config changes
-	resp.Diagnostics.AddError(
-		"Update Not Supported",
-		"Prometheus configuration changes require recreation. Use terraform apply -replace to redeploy.",
-	)
+	// Stop the current Prometheus instance
+	_, err := r.client.DoRequest("POST", "/metrics/stop", nil)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to stop Prometheus for update, got error: %s", err))
+		return
+	}
+
+	// Redeploy with new configuration
+	deployReq := map[string]interface{}{
+		"prometheus_version": data.Version.ValueString(),
+		"prometheus_port":    data.Port.ValueInt64(),
+		"scrape_interval":    data.ScrapeInterval.ValueInt64(),
+		"deployment_mode":    data.DeploymentMode.ValueString(),
+	}
+
+	// Add docker config if using docker mode
+	if data.DeploymentMode.ValueString() == "docker" {
+		deployReq["docker_config"] = map[string]interface{}{
+			"network_mode": data.NetworkMode.ValueString(),
+		}
+	}
+
+	_, err = r.client.DoRequest("POST", "/metrics/deploy", deployReq)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to redeploy Prometheus, got error: %s", err))
+		return
+	}
+
+	// Read the updated status
+	if err := r.readStatus(ctx, &data); err != nil {
+		resp.Diagnostics.AddWarning("Status Check", fmt.Sprintf("Prometheus redeployed but status check failed: %s", err))
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *MetricsPrometheusResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
