@@ -755,8 +755,10 @@ func (r *KeyProviderResource) waitForAWSKMSReady(ctx context.Context, providerID
 			return fmt.Errorf("failed to parse AWS KMS status response: %s", err)
 		}
 
-		// Check if KMS is ready
-		if statusResp.KMSReachable && statusResp.HasCredentials && statusResp.KMSStatus == "available" {
+		// Check if KMS is ready — don't require HasCredentials because
+		// role-assumption-only configs (no static access keys) legitimately
+		// have HasCredentials=false while still being fully functional.
+		if statusResp.KMSReachable && statusResp.KMSStatus == "available" {
 			return nil // AWS KMS is ready!
 		}
 

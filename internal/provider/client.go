@@ -330,31 +330,19 @@ type NetworkNode struct {
 
 // Backup Target types
 type BackupTarget struct {
-	ID             int    `json:"id"`
-	Name           string `json:"name"`
-	Type           string `json:"type"`
-	Endpoint       string `json:"endpoint,omitempty"`
-	Region         string `json:"region"`
-	AccessKeyID    string `json:"accessKeyId"`
-	BucketName     string `json:"bucketName"`
-	BucketPath     string `json:"bucketPath,omitempty"`
-	ForcePathStyle bool   `json:"forcePathStyle"`
-	ResticPassword string `json:"resticPassword,omitempty"`
-	CreatedAt      string `json:"createdAt,omitempty"`
-	UpdatedAt      string `json:"updatedAt,omitempty"`
-}
-
-type CreateBackupTargetRequest struct {
-	Name            string `json:"name"`
-	Type            string `json:"type"`
-	Endpoint        string `json:"endpoint,omitempty"`
-	Region          string `json:"region"`
-	AccessKeyID     string `json:"accessKeyId"`
-	SecretAccessKey string `json:"secretKey"` // API expects "secretKey" not "secretAccessKey"
-	BucketName      string `json:"bucketName"`
-	BucketPath      string `json:"bucketPath,omitempty"`
-	ForcePathStyle  bool   `json:"forcePathStyle"`
-	ResticPassword  string `json:"resticPassword"`
+	ID             int                    `json:"id"`
+	Name           string                 `json:"name"`
+	Type           string                 `json:"type"`
+	Config         map[string]interface{} `json:"config,omitempty"`
+	Endpoint       string                 `json:"endpoint,omitempty"`
+	Region         string                 `json:"region"`
+	AccessKeyID    string                 `json:"accessKeyId"`
+	BucketName     string                 `json:"bucketName"`
+	BucketPath     string                 `json:"bucketPath,omitempty"`
+	ForcePathStyle bool                   `json:"forcePathStyle"`
+	ResticPassword string                 `json:"resticPassword,omitempty"`
+	CreatedAt      string                 `json:"createdAt,omitempty"`
+	UpdatedAt      string                 `json:"updatedAt,omitempty"`
 }
 
 // Backup Schedule types
