@@ -524,31 +524,18 @@ func (r *KeyProviderResource) Update(ctx context.Context, req resource.UpdateReq
 			return
 		}
 
+		// Send all fields explicitly — empty string for removed fields so the
+		// backend clears old values (e.g. switching from static creds to role assumption).
 		awsKmsConfig := map[string]interface{}{
-			"operation": awsConfig.Operation.ValueString(),
-			"awsRegion": awsConfig.AWSRegion.ValueString(),
-		}
-
-		if !awsConfig.AWSAccessKeyID.IsNull() {
-			awsKmsConfig["awsAccessKeyId"] = awsConfig.AWSAccessKeyID.ValueString()
-		}
-		if !awsConfig.AWSSecretAccessKey.IsNull() {
-			awsKmsConfig["awsSecretAccessKey"] = awsConfig.AWSSecretAccessKey.ValueString()
-		}
-		if !awsConfig.AWSSessionToken.IsNull() {
-			awsKmsConfig["awsSessionToken"] = awsConfig.AWSSessionToken.ValueString()
-		}
-		if !awsConfig.AssumeRoleARN.IsNull() {
-			awsKmsConfig["assumeRoleArn"] = awsConfig.AssumeRoleARN.ValueString()
-		}
-		if !awsConfig.ExternalID.IsNull() {
-			awsKmsConfig["externalId"] = awsConfig.ExternalID.ValueString()
-		}
-		if !awsConfig.EndpointURL.IsNull() {
-			awsKmsConfig["endpointUrl"] = awsConfig.EndpointURL.ValueString()
-		}
-		if !awsConfig.KMSKeyAliasPrefix.IsNull() {
-			awsKmsConfig["kmsKeyAliasPrefix"] = awsConfig.KMSKeyAliasPrefix.ValueString()
+			"operation":          awsConfig.Operation.ValueString(),
+			"awsRegion":         awsConfig.AWSRegion.ValueString(),
+			"awsAccessKeyId":     valOrEmpty(awsConfig.AWSAccessKeyID),
+			"awsSecretAccessKey": valOrEmpty(awsConfig.AWSSecretAccessKey),
+			"awsSessionToken":    valOrEmpty(awsConfig.AWSSessionToken),
+			"assumeRoleArn":      valOrEmpty(awsConfig.AssumeRoleARN),
+			"externalId":         valOrEmpty(awsConfig.ExternalID),
+			"endpointUrl":        valOrEmpty(awsConfig.EndpointURL),
+			"kmsKeyAliasPrefix":  valOrEmpty(awsConfig.KMSKeyAliasPrefix),
 		}
 
 		config["awsKms"] = awsKmsConfig
@@ -785,4 +772,13 @@ func (r *KeyProviderResource) waitForAWSKMSReady(ctx context.Context, providerID
 	}
 
 	return fmt.Errorf("AWS KMS did not become ready after %d attempts (%d seconds)", maxAttempts, maxAttempts*delaySeconds)
+}
+
+// valOrEmpty returns the string value if set, or empty string if null/unknown.
+// Used in Update to explicitly send empty strings so the backend clears old values.
+func valOrEmpty(v types.String) string {
+	if v.IsNull() || v.IsUnknown() {
+		return ""
+	}
+	return v.ValueString()
 }
