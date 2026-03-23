@@ -47,3 +47,10 @@ terraform.state.backup
 tfplan
 
 *.log
+
+# Sensitive files
+*.pem
+*.asc
+*.key
+.env
+setup-github-secrets.sh
