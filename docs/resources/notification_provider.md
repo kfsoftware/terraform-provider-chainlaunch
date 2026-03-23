@@ -51,7 +51,7 @@ Optional:
 - `from_name` (String) Sender display name
 - `password` (String, Sensitive) SMTP authentication password
 - `port` (Number) SMTP server port (default: 587)
-- `recipients` (List of String) List of recipient email addresses for notifications
+- `recipients` (List of String) List of recipient email addresses for notificationsw
 - `skip_tls_verify` (Boolean) Skip TLS certificate verification (use for self-signed certificates)
 - `to_email` (String, Deprecated) Recipient email address (deprecated, use recipients instead)
 - `use_tls` (Boolean) Use TLS for SMTP connection

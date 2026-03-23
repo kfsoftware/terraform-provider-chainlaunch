@@ -104,8 +104,13 @@ func (r *KeyProviderResource) Schema(ctx context.Context, req resource.SchemaReq
 				Description: "Whether this is the default key provider.",
 			},
 			"aws_kms_config": schema.SingleNestedAttribute{
-				Optional:    true,
-				Description: "AWS KMS configuration. Required when type is AWS_KMS.",
+				Optional: true,
+				Description: "AWS KMS configuration. Required when type is AWS_KMS. " +
+					"Supports three authentication modes: (1) IAM Instance Role / EKS IRSA — omit credentials, " +
+					"the AWS SDK discovers them automatically; (2) STS AssumeRole — set assume_role_arn to assume " +
+					"a dedicated role; (3) Static credentials — set aws_access_key_id and aws_secret_access_key " +
+					"(development only). Modes can be combined: static credentials + AssumeRole for cross-account " +
+					"access from outside AWS.",
 				Attributes: map[string]schema.Attribute{
 					"operation": schema.StringAttribute{
 						Required:    true,
@@ -113,34 +118,41 @@ func (r *KeyProviderResource) Schema(ctx context.Context, req resource.SchemaReq
 					},
 					"aws_region": schema.StringAttribute{
 						Required:    true,
-						Description: "AWS region where KMS keys are located.",
+						Description: "AWS region where KMS keys are located (e.g., us-east-1).",
 					},
 					"aws_access_key_id": schema.StringAttribute{
-						Optional:    true,
-						Sensitive:   true,
-						Description: "AWS access key ID for authentication (optional if using IAM roles).",
+						Optional:  true,
+						Sensitive: true,
+						Description: "AWS access key ID for static credential authentication. " +
+							"Omit when running on EC2 (instance role) or EKS (IRSA) — the AWS SDK " +
+							"picks up credentials automatically. Only use for development or when " +
+							"ChainLaunch runs outside AWS.",
 					},
 					"aws_secret_access_key": schema.StringAttribute{
-						Optional:    true,
-						Sensitive:   true,
-						Description: "AWS secret access key for authentication.",
+						Optional:  true,
+						Sensitive: true,
+						Description: "AWS secret access key for static credential authentication. " +
+							"Required when aws_access_key_id is set. Omit for IAM role-based auth.",
 					},
 					"aws_session_token": schema.StringAttribute{
 						Optional:    true,
 						Sensitive:   true,
-						Description: "AWS session token for temporary credentials.",
+						Description: "AWS session token for temporary credentials (e.g., from STS GetSessionToken). Usually not needed.",
 					},
 					"assume_role_arn": schema.StringAttribute{
-						Optional:    true,
-						Description: "IAM role ARN to assume for cross-account access.",
+						Optional: true,
+						Description: "IAM role ARN to assume via STS AssumeRole. Use for cross-account access " +
+							"or to scope permissions to a dedicated KMS role. Works with both instance role " +
+							"and static credential base authentication.",
 					},
 					"external_id": schema.StringAttribute{
-						Optional:    true,
-						Description: "External ID for role assumption.",
+						Optional: true,
+						Description: "External ID for STS AssumeRole, providing an additional layer of security. " +
+							"Only used when assume_role_arn is set.",
 					},
 					"endpoint_url": schema.StringAttribute{
 						Optional:    true,
-						Description: "Custom endpoint URL (e.g., for LocalStack).",
+						Description: "Custom KMS endpoint URL. Use for LocalStack (http://localhost:4566) or VPC endpoints.",
 					},
 					"kms_key_alias_prefix": schema.StringAttribute{
 						Optional:    true,
@@ -376,13 +388,6 @@ func (r *KeyProviderResource) Create(ctx context.Context, req resource.CreateReq
 
 	createReq["config"] = config
 
-	// Debug: Log the request payload
-	requestJSON, _ := json.MarshalIndent(createReq, "", "  ")
-	resp.Diagnostics.AddWarning(
-		"DEBUG: Request Payload",
-		fmt.Sprintf("Sending to POST /key-providers:\n%s", string(requestJSON)),
-	)
-
 	body, err := r.client.DoRequest("POST", "/key-providers", createReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create key provider, got error: %s", err))
@@ -497,11 +502,143 @@ func (r *KeyProviderResource) Update(ctx context.Context, req resource.UpdateReq
 	// Preserve created_at from state (it's a computed field that never changes)
 	data.CreatedAt = state.CreatedAt
 
-	// For now, we'll just read back the resource since updates might not be fully supported
-	resp.Diagnostics.AddWarning(
-		"Update Not Fully Implemented",
-		"Key provider updates may have limited support. Most changes require resource replacement.",
-	)
+	// Build update request
+	updateReq := map[string]interface{}{
+		"name": data.Name.ValueString(),
+	}
+
+	isDefault := 0
+	if !data.IsDefault.IsNull() && data.IsDefault.ValueBool() {
+		isDefault = 1
+	}
+	updateReq["isDefault"] = isDefault
+
+	// Add configuration based on type
+	config := make(map[string]interface{})
+
+	if !data.AWSKMSConfig.IsNull() {
+		var awsConfig AWSKMSConfigModel
+		diags := data.AWSKMSConfig.As(ctx, &awsConfig, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		// Send all fields explicitly — empty string for removed fields so the
+		// backend clears old values (e.g. switching from static creds to role assumption).
+		awsKmsConfig := map[string]interface{}{
+			"operation":          awsConfig.Operation.ValueString(),
+			"awsRegion":         awsConfig.AWSRegion.ValueString(),
+			"awsAccessKeyId":     valOrEmpty(awsConfig.AWSAccessKeyID),
+			"awsSecretAccessKey": valOrEmpty(awsConfig.AWSSecretAccessKey),
+			"awsSessionToken":    valOrEmpty(awsConfig.AWSSessionToken),
+			"assumeRoleArn":      valOrEmpty(awsConfig.AssumeRoleARN),
+			"externalId":         valOrEmpty(awsConfig.ExternalID),
+			"endpointUrl":        valOrEmpty(awsConfig.EndpointURL),
+			"kmsKeyAliasPrefix":  valOrEmpty(awsConfig.KMSKeyAliasPrefix),
+		}
+
+		config["awsKms"] = awsKmsConfig
+	}
+
+	if !data.VaultConfig.IsNull() {
+		var vaultConfig VaultConfigModel
+		diags := data.VaultConfig.As(ctx, &vaultConfig, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		vaultCfg := map[string]interface{}{
+			"operation": vaultConfig.Operation.ValueString(),
+		}
+
+		if !vaultConfig.Address.IsNull() {
+			vaultCfg["address"] = vaultConfig.Address.ValueString()
+		}
+		if !vaultConfig.Token.IsNull() {
+			vaultCfg["token"] = vaultConfig.Token.ValueString()
+		}
+		if !vaultConfig.Mount.IsNull() {
+			vaultCfg["mount"] = vaultConfig.Mount.ValueString()
+		}
+		if !vaultConfig.CACert.IsNull() {
+			vaultCfg["caCert"] = vaultConfig.CACert.ValueString()
+		}
+		if !vaultConfig.Namespace.IsNull() {
+			vaultCfg["namespace"] = vaultConfig.Namespace.ValueString()
+		}
+		if !vaultConfig.Mode.IsNull() {
+			vaultCfg["mode"] = vaultConfig.Mode.ValueString()
+		}
+		if !vaultConfig.Network.IsNull() {
+			vaultCfg["network"] = vaultConfig.Network.ValueString()
+		}
+		if !vaultConfig.Port.IsNull() {
+			vaultCfg["port"] = vaultConfig.Port.ValueInt64()
+		}
+		if !vaultConfig.Version.IsNull() {
+			vaultCfg["version"] = vaultConfig.Version.ValueString()
+		}
+		if !vaultConfig.PKIMount.IsNull() {
+			vaultCfg["pkiMount"] = vaultConfig.PKIMount.ValueString()
+		}
+		if !vaultConfig.KVMount.IsNull() {
+			vaultCfg["kvMount"] = vaultConfig.KVMount.ValueString()
+		}
+		if !vaultConfig.DefaultCertTTL.IsNull() {
+			vaultCfg["defaultCertTTL"] = vaultConfig.DefaultCertTTL.ValueString()
+		}
+		if !vaultConfig.MaxCertTTL.IsNull() {
+			vaultCfg["maxCertTTL"] = vaultConfig.MaxCertTTL.ValueString()
+		}
+		if !vaultConfig.DefaultCACertTTL.IsNull() {
+			vaultCfg["defaultCACertTTL"] = vaultConfig.DefaultCACertTTL.ValueString()
+		}
+		if !vaultConfig.MaxCACertTTL.IsNull() {
+			vaultCfg["maxCACertTTL"] = vaultConfig.MaxCACertTTL.ValueString()
+		}
+
+		config["vault"] = vaultCfg
+	}
+
+	updateReq["config"] = config
+
+	body, err := r.client.DoRequest("PUT", fmt.Sprintf("/key-providers/%s", data.ID.ValueString()), updateReq)
+	if err != nil {
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to update key provider, got error: %s", err))
+		return
+	}
+
+	var providerResp struct {
+		ID        int64  `json:"id"`
+		Name      string `json:"name"`
+		Type      string `json:"type"`
+		IsDefault int    `json:"isDefault"`
+		CreatedAt string `json:"createdAt"`
+	}
+
+	if err := json.Unmarshal(body, &providerResp); err != nil {
+		resp.Diagnostics.AddError("Parse Error", fmt.Sprintf("Unable to parse key provider response, got error: %s", err))
+		return
+	}
+
+	data.Name = types.StringValue(providerResp.Name)
+	data.Type = types.StringValue(providerResp.Type)
+	data.IsDefault = types.BoolValue(providerResp.IsDefault == 1)
+	if providerResp.CreatedAt != "" {
+		data.CreatedAt = types.StringValue(providerResp.CreatedAt)
+	}
+
+	// Verify provider is still healthy after update
+	if data.Type.ValueString() == "AWS_KMS" && !data.AWSKMSConfig.IsNull() {
+		if err := r.waitForAWSKMSReady(ctx, providerResp.ID); err != nil {
+			resp.Diagnostics.AddWarning(
+				"Provider Status Check",
+				fmt.Sprintf("AWS KMS provider updated but status check failed: %s. The provider may not be fully ready yet.", err),
+			)
+		}
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -618,8 +755,10 @@ func (r *KeyProviderResource) waitForAWSKMSReady(ctx context.Context, providerID
 			return fmt.Errorf("failed to parse AWS KMS status response: %s", err)
 		}
 
-		// Check if KMS is ready
-		if statusResp.KMSReachable && statusResp.HasCredentials && statusResp.KMSStatus == "available" {
+		// Check if KMS is ready — don't require HasCredentials because
+		// role-assumption-only configs (no static access keys) legitimately
+		// have HasCredentials=false while still being fully functional.
+		if statusResp.KMSReachable && statusResp.KMSStatus == "available" {
 			return nil // AWS KMS is ready!
 		}
 
@@ -635,4 +774,13 @@ func (r *KeyProviderResource) waitForAWSKMSReady(ctx context.Context, providerID
 	}
 
 	return fmt.Errorf("AWS KMS did not become ready after %d attempts (%d seconds)", maxAttempts, maxAttempts*delaySeconds)
+}
+
+// valOrEmpty returns the string value if set, or empty string if null/unknown.
+// Used in Update to explicitly send empty strings so the backend clears old values.
+func valOrEmpty(v types.String) string {
+	if v.IsNull() || v.IsUnknown() {
+		return ""
+	}
+	return v.ValueString()
 }

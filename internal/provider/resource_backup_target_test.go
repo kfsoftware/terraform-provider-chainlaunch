@@ -165,7 +165,7 @@ type mockBackupTargetStorage struct {
 }
 
 func (s *mockBackupTargetStorage) handleCreate(w http.ResponseWriter, r *http.Request) {
-	var req CreateBackupTargetRequest
+	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -174,16 +174,23 @@ func (s *mockBackupTargetStorage) handleCreate(w http.ResponseWriter, r *http.Re
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	cfg, _ := req["config"].(map[string]interface{})
+	region, _ := cfg["region"].(string)
+	endpoint, _ := cfg["endpoint"].(string)
+	bucketName, _ := cfg["bucketName"].(string)
+	bucketPath, _ := cfg["bucketPath"].(string)
+	forcePathStyle, _ := cfg["forcePathStyle"].(bool)
+
 	target := BackupTarget{
 		ID:             s.nextID,
-		Name:           req.Name,
-		Type:           req.Type,
-		Endpoint:       req.Endpoint,
-		Region:         req.Region,
-		AccessKeyID:    req.AccessKeyID,
-		BucketName:     req.BucketName,
-		BucketPath:     req.BucketPath,
-		ForcePathStyle: req.ForcePathStyle,
+		Name:           req["name"].(string),
+		Type:           req["type"].(string),
+		Config:         cfg,
+		Endpoint:       endpoint,
+		Region:         region,
+		BucketName:     bucketName,
+		BucketPath:     bucketPath,
+		ForcePathStyle: forcePathStyle,
 		CreatedAt:      "2025-01-01T00:00:00Z",
 		UpdatedAt:      "2025-01-01T00:00:00Z",
 	}
@@ -211,7 +218,7 @@ func (s *mockBackupTargetStorage) handleGet(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *mockBackupTargetStorage) handleUpdate(w http.ResponseWriter, r *http.Request, id int) {
-	var req CreateBackupTargetRequest
+	var req map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -226,14 +233,25 @@ func (s *mockBackupTargetStorage) handleUpdate(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	target.Name = req.Name
-	target.Type = req.Type
-	target.Endpoint = req.Endpoint
-	target.Region = req.Region
-	target.AccessKeyID = req.AccessKeyID
-	target.BucketName = req.BucketName
-	target.BucketPath = req.BucketPath
-	target.ForcePathStyle = req.ForcePathStyle
+	cfg, _ := req["config"].(map[string]interface{})
+	target.Name = req["name"].(string)
+	target.Type = req["type"].(string)
+	target.Config = cfg
+	if v, ok := cfg["endpoint"].(string); ok {
+		target.Endpoint = v
+	}
+	if v, ok := cfg["region"].(string); ok {
+		target.Region = v
+	}
+	if v, ok := cfg["bucketName"].(string); ok {
+		target.BucketName = v
+	}
+	if v, ok := cfg["bucketPath"].(string); ok {
+		target.BucketPath = v
+	}
+	if v, ok := cfg["forcePathStyle"].(bool); ok {
+		target.ForcePathStyle = v
+	}
 	target.UpdatedAt = "2025-01-01T00:00:01Z"
 
 	s.targets[id] = target

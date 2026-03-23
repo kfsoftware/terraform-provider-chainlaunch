@@ -40,6 +40,10 @@ type BackupTargetResourceModel struct {
 	BucketPath      types.String `tfsdk:"bucket_path"`
 	ForcePathStyle  types.Bool   `tfsdk:"force_path_style"`
 	ResticPassword  types.String `tfsdk:"restic_password"`
+	UseInstanceRole types.Bool   `tfsdk:"use_instance_role"`
+	RoleARN         types.String `tfsdk:"role_arn"`
+	ExternalID      types.String `tfsdk:"external_id"`
+	Profile         types.String `tfsdk:"profile"`
 	CreatedAt       types.String `tfsdk:"created_at"`
 	UpdatedAt       types.String `tfsdk:"updated_at"`
 }
@@ -80,14 +84,14 @@ func (r *BackupTargetResource) Schema(ctx context.Context, req resource.SchemaRe
 				Description: "AWS region (e.g., 'us-east-1') or 'us-east-1' for MinIO.",
 			},
 			"access_key_id": schema.StringAttribute{
-				Required:    true,
+				Optional:    true,
 				Sensitive:   true,
-				Description: "S3 access key ID.",
+				Description: "S3 access key ID. Required when using static credentials.",
 			},
 			"secret_access_key": schema.StringAttribute{
-				Required:    true,
+				Optional:    true,
 				Sensitive:   true,
-				Description: "S3 secret access key.",
+				Description: "S3 secret access key. Required when using static credentials.",
 			},
 			"bucket_name": schema.StringAttribute{
 				Required:    true,
@@ -107,6 +111,24 @@ func (r *BackupTargetResource) Schema(ctx context.Context, req resource.SchemaRe
 				Required:    true,
 				Sensitive:   true,
 				Description: "Password for encrypting backups with Restic.",
+			},
+			"use_instance_role": schema.BoolAttribute{
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(false),
+				Description: "Use EC2 instance role or EKS IRSA for authentication instead of static credentials.",
+			},
+			"role_arn": schema.StringAttribute{
+				Optional:    true,
+				Description: "AWS IAM role ARN to assume for S3 access. Can be combined with static credentials or instance role as base credentials.",
+			},
+			"external_id": schema.StringAttribute{
+				Optional:    true,
+				Description: "External ID for STS AssumeRole (used with role_arn for cross-account access).",
+			},
+			"profile": schema.StringAttribute{
+				Optional:    true,
+				Description: "AWS named profile from ~/.aws/credentials or ~/.aws/config.",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:    true,
@@ -148,18 +170,7 @@ func (r *BackupTargetResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	createReq := CreateBackupTargetRequest{
-		Name:            data.Name.ValueString(),
-		Type:            data.Type.ValueString(),
-		Endpoint:        data.Endpoint.ValueString(),
-		Region:          data.Region.ValueString(),
-		AccessKeyID:     data.AccessKeyID.ValueString(),
-		SecretAccessKey: data.SecretAccessKey.ValueString(),
-		BucketName:      data.BucketName.ValueString(),
-		BucketPath:      data.BucketPath.ValueString(),
-		ForcePathStyle:  data.ForcePathStyle.ValueBool(),
-		ResticPassword:  data.ResticPassword.ValueString(),
-	}
+	createReq := backupTargetConfigRequest(data)
 
 	body, err := r.client.DoRequest("POST", "/backups/targets", createReq)
 	if err != nil {
@@ -174,23 +185,7 @@ func (r *BackupTargetResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	data.ID = types.StringValue(fmt.Sprintf("%d", target.ID))
-	data.Name = types.StringValue(target.Name)
-	data.Type = types.StringValue(target.Type)
-	if target.Endpoint != "" {
-		data.Endpoint = types.StringValue(target.Endpoint)
-	}
-	data.Region = types.StringValue(target.Region)
-	data.BucketName = types.StringValue(target.BucketName)
-	if target.BucketPath != "" {
-		data.BucketPath = types.StringValue(target.BucketPath)
-	}
-	data.ForcePathStyle = types.BoolValue(target.ForcePathStyle)
-	if target.CreatedAt != "" {
-		data.CreatedAt = types.StringValue(target.CreatedAt)
-	}
-	if target.UpdatedAt != "" {
-		data.UpdatedAt = types.StringValue(target.UpdatedAt)
-	}
+	populateBackupTargetFromResponse(&data, &target)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -216,23 +211,7 @@ func (r *BackupTargetResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	data.Name = types.StringValue(target.Name)
-	data.Type = types.StringValue(target.Type)
-	if target.Endpoint != "" {
-		data.Endpoint = types.StringValue(target.Endpoint)
-	}
-	data.Region = types.StringValue(target.Region)
-	data.BucketName = types.StringValue(target.BucketName)
-	if target.BucketPath != "" {
-		data.BucketPath = types.StringValue(target.BucketPath)
-	}
-	data.ForcePathStyle = types.BoolValue(target.ForcePathStyle)
-	if target.CreatedAt != "" {
-		data.CreatedAt = types.StringValue(target.CreatedAt)
-	}
-	if target.UpdatedAt != "" {
-		data.UpdatedAt = types.StringValue(target.UpdatedAt)
-	}
+	populateBackupTargetFromResponse(&data, &target)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -256,18 +235,7 @@ func (r *BackupTargetResource) Update(ctx context.Context, req resource.UpdateRe
 	// Preserve created_at from state
 	data.CreatedAt = state.CreatedAt
 
-	updateReq := CreateBackupTargetRequest{
-		Name:            data.Name.ValueString(),
-		Type:            data.Type.ValueString(),
-		Endpoint:        data.Endpoint.ValueString(),
-		Region:          data.Region.ValueString(),
-		AccessKeyID:     data.AccessKeyID.ValueString(),
-		SecretAccessKey: data.SecretAccessKey.ValueString(),
-		BucketName:      data.BucketName.ValueString(),
-		BucketPath:      data.BucketPath.ValueString(),
-		ForcePathStyle:  data.ForcePathStyle.ValueBool(),
-		ResticPassword:  data.ResticPassword.ValueString(),
-	}
+	updateReq := backupTargetConfigRequest(data)
 
 	body, err := r.client.DoRequest("PUT", fmt.Sprintf("/backups/targets/%s", data.ID.ValueString()), updateReq)
 	if err != nil {
@@ -281,20 +249,7 @@ func (r *BackupTargetResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	data.Name = types.StringValue(target.Name)
-	data.Type = types.StringValue(target.Type)
-	if target.Endpoint != "" {
-		data.Endpoint = types.StringValue(target.Endpoint)
-	}
-	data.Region = types.StringValue(target.Region)
-	data.BucketName = types.StringValue(target.BucketName)
-	if target.BucketPath != "" {
-		data.BucketPath = types.StringValue(target.BucketPath)
-	}
-	data.ForcePathStyle = types.BoolValue(target.ForcePathStyle)
-	if target.UpdatedAt != "" {
-		data.UpdatedAt = types.StringValue(target.UpdatedAt)
-	}
+	populateBackupTargetFromResponse(&data, &target)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -317,4 +272,119 @@ func (r *BackupTargetResource) Delete(ctx context.Context, req resource.DeleteRe
 
 func (r *BackupTargetResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// populateBackupTargetFromResponse sets model fields from the API response.
+// It reads from both legacy top-level fields and the config JSON object.
+func populateBackupTargetFromResponse(data *BackupTargetResourceModel, target *BackupTarget) {
+	data.Name = types.StringValue(target.Name)
+	data.Type = types.StringValue(target.Type)
+
+	// Prefer config JSON values over legacy top-level fields
+	cfg := target.Config
+
+	region := target.Region
+	if v, ok := cfg["region"].(string); ok && v != "" {
+		region = v
+	}
+	data.Region = types.StringValue(region)
+
+	endpoint := target.Endpoint
+	if v, ok := cfg["endpoint"].(string); ok && v != "" {
+		endpoint = v
+	}
+	if endpoint != "" {
+		data.Endpoint = types.StringValue(endpoint)
+	}
+
+	bucketName := target.BucketName
+	if v, ok := cfg["bucketName"].(string); ok && v != "" {
+		bucketName = v
+	}
+	data.BucketName = types.StringValue(bucketName)
+
+	bucketPath := target.BucketPath
+	if v, ok := cfg["bucketPath"].(string); ok && v != "" {
+		bucketPath = v
+	}
+	if bucketPath != "" {
+		data.BucketPath = types.StringValue(bucketPath)
+	}
+
+	forcePathStyle := target.ForcePathStyle
+	if v, ok := cfg["forcePathStyle"].(bool); ok {
+		forcePathStyle = v
+	}
+	data.ForcePathStyle = types.BoolValue(forcePathStyle)
+
+	// Auth fields from config — don't read sensitive values back from API
+	// (access_key_id and secret_access_key are preserved from state by Terraform)
+	if v, ok := cfg["useInstanceRole"].(bool); ok && v {
+		data.UseInstanceRole = types.BoolValue(true)
+	}
+	if v, ok := cfg["roleArn"].(string); ok && v != "" {
+		data.RoleARN = types.StringValue(v)
+	}
+	if v, ok := cfg["externalId"].(string); ok && v != "" {
+		data.ExternalID = types.StringValue(v)
+	}
+	if v, ok := cfg["profile"].(string); ok && v != "" {
+		data.Profile = types.StringValue(v)
+	}
+
+	if target.CreatedAt != "" {
+		data.CreatedAt = types.StringValue(target.CreatedAt)
+	}
+	if target.UpdatedAt != "" {
+		data.UpdatedAt = types.StringValue(target.UpdatedAt)
+	}
+}
+
+// backupTargetConfigRequest builds a request body that uses the JSON config approach,
+// supporting static credentials, instance role, role assumption, and named profile.
+func backupTargetConfigRequest(data BackupTargetResourceModel) map[string]interface{} {
+	config := map[string]interface{}{
+		"region":         data.Region.ValueString(),
+		"bucketName":     data.BucketName.ValueString(),
+		"forcePathStyle": data.ForcePathStyle.ValueBool(),
+		"resticPassword": data.ResticPassword.ValueString(),
+	}
+	if !data.Endpoint.IsNull() && data.Endpoint.ValueString() != "" {
+		config["endpoint"] = data.Endpoint.ValueString()
+	}
+	if !data.BucketPath.IsNull() && data.BucketPath.ValueString() != "" {
+		config["bucketPath"] = data.BucketPath.ValueString()
+	}
+
+	// Auth: static credentials
+	if !data.AccessKeyID.IsNull() && data.AccessKeyID.ValueString() != "" {
+		config["accessKeyId"] = data.AccessKeyID.ValueString()
+	}
+	if !data.SecretAccessKey.IsNull() && data.SecretAccessKey.ValueString() != "" {
+		config["secretKey"] = data.SecretAccessKey.ValueString()
+	}
+
+	// Auth: instance role
+	if !data.UseInstanceRole.IsNull() && data.UseInstanceRole.ValueBool() {
+		config["useInstanceRole"] = true
+	}
+
+	// Auth: role assumption
+	if !data.RoleARN.IsNull() && data.RoleARN.ValueString() != "" {
+		config["roleArn"] = data.RoleARN.ValueString()
+	}
+	if !data.ExternalID.IsNull() && data.ExternalID.ValueString() != "" {
+		config["externalId"] = data.ExternalID.ValueString()
+	}
+
+	// Auth: named profile
+	if !data.Profile.IsNull() && data.Profile.ValueString() != "" {
+		config["profile"] = data.Profile.ValueString()
+	}
+
+	return map[string]interface{}{
+		"name":   data.Name.ValueString(),
+		"type":   data.Type.ValueString(),
+		"config": config,
+	}
 }
