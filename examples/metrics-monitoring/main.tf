@@ -36,6 +36,15 @@ resource "chainlaunch_metrics_prometheus" "monitoring" {
   scrape_interval = var.scrape_interval
   deployment_mode = var.deployment_mode
   network_mode    = var.network_mode
+
+  # Optional TSDB retention (applied on next start/restart). Empty leaves the
+  # Prometheus 15d implicit default and enforces no size limit.
+  retention_time = var.retention_time
+  retention_size = var.retention_size
+
+  # Optional remote_write endpoints to ship metrics to an external long-term
+  # store (Grafana Cloud, Thanos, Mimir, ...). Empty renders no remote_write.
+  remote_write = var.remote_write
 }
 
 # ==============================================================================
