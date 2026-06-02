@@ -56,6 +56,48 @@ variable "network_mode" {
 }
 
 # ==============================================================================
+# TSDB RETENTION (optional)
+# ==============================================================================
+
+variable "retention_time" {
+  description = "TSDB time-based retention (e.g. \"30d\", \"90d\"). Empty keeps the Prometheus 15d default."
+  type        = string
+  default     = ""
+}
+
+variable "retention_size" {
+  description = "TSDB size-based retention (e.g. \"50GB\", \"512MB\"). Empty enforces no size limit."
+  type        = string
+  default     = ""
+}
+
+# ==============================================================================
+# REMOTE WRITE (optional) - ship metrics to an external long-term store
+# ==============================================================================
+
+variable "remote_write" {
+  description = "Prometheus remote_write endpoints (Grafana Cloud, Thanos, Mimir, etc.). Empty renders no remote_write block."
+  type = list(object({
+    url          = string
+    name         = optional(string)
+    bearer_token = optional(string)
+    basic_auth = optional(object({
+      username = optional(string)
+      password = optional(string)
+    }))
+    tls = optional(object({
+      ca_file              = optional(string)
+      cert_file            = optional(string)
+      key_file             = optional(string)
+      server_name          = optional(string)
+      insecure_skip_verify = optional(bool)
+    }))
+  }))
+  default   = []
+  sensitive = true
+}
+
+# ==============================================================================
 # METRICS TARGETS
 # ==============================================================================
 

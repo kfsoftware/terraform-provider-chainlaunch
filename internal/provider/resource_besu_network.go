@@ -248,6 +248,16 @@ func (r *BesuNetworkResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
+	// Validate consensus type
+	validConsensus := map[string]bool{"qbft": true, "ibft2": true, "clique": true, "ethash": true}
+	if !validConsensus[data.Consensus.ValueString()] {
+		resp.Diagnostics.AddError(
+			"Invalid Consensus Type",
+			fmt.Sprintf("Consensus must be one of: qbft, ibft2, clique, ethash. Got: %s", data.Consensus.ValueString()),
+		)
+		return
+	}
+
 	// Build the config object
 	config := map[string]interface{}{
 		"chainId":                 data.ChainID.ValueInt64(),

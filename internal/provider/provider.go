@@ -196,7 +196,7 @@ func (p *ChainlaunchProvider) DataSources(ctx context.Context) []func() datasour
 		NewFabricOrdererDataSource,
 		NewFabricNetworkDataSource,
 		NewFabricNetworkConfigDataSource,
-		// NewBesuNetworkDataSource, // Commented out - data_source_besu_network.go is skipped
+		NewBesuNetworkDataSource,
 		NewBesuNodeDataSource,
 		NewFabricChaincodeDataSource,
 		NewExternalNodesDataSource,

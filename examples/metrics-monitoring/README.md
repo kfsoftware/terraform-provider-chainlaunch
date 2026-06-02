@@ -9,6 +9,48 @@ This example shows:
 - **Automatic Synchronization**: Metrics jobs that automatically collect all node endpoints
 - **Multi-Node Monitoring**: Monitor multiple peers and orderers simultaneously
 - **Dynamic Configuration**: Add/remove nodes and metrics automatically update
+- **TSDB Retention**: Cap how long / how much data Prometheus keeps via `retention_time` and `retention_size`
+- **External Observability**: Ship metrics to Grafana Cloud, Thanos, Mimir, etc. via `remote_write`
+
+### External Observability (remote_write + retention)
+
+The Prometheus resource supports forwarding metrics to an external long-term
+store and bounding local on-disk retention:
+
+```hcl
+resource "chainlaunch_metrics_prometheus" "monitoring" {
+  scrape_interval = 15
+
+  # Keep 90 days locally, capped at 50GB (applied on next start/restart).
+  retention_time = "90d"
+  retention_size = "50GB"
+
+  # Forward metrics to Grafana Cloud and an internal Thanos receiver.
+  remote_write = [
+    {
+      url  = "https://prometheus-prod.grafana.net/api/prom/push"
+      name = "grafana-cloud"
+      basic_auth = {
+        username = var.grafana_cloud_user
+        password = var.grafana_cloud_api_key
+      }
+    },
+    {
+      url          = "https://thanos.internal.example.com/api/v1/receive"
+      bearer_token = var.thanos_token
+      tls = {
+        ca_file     = "/etc/prometheus/certs/ca.pem"
+        server_name = "thanos.internal.example.com"
+      }
+    },
+  ]
+}
+```
+
+`retention_time`, `retention_size`, and `remote_write` are all Optional and
+default to empty, so existing configurations are unaffected. Credentials
+(`bearer_token`, `basic_auth.password`) are write-only and never read back from
+the API.
 
 ## Architecture
 
